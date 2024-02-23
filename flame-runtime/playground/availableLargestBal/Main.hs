@@ -318,7 +318,5 @@ majorityQuorumMain = do
                        ]
 ----------------------------------------------------------------------
 -- Entry point
---main = test1
---main = test2
 --main = test3
 main = threeByFiveQuorumMain
