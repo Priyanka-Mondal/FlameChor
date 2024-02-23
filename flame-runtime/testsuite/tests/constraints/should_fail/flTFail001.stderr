@@ -1,0 +1,11 @@
+flTFail001.hs:14:17:
+    Could not deduce: (C p ≽ C ('KConj ('KConf p) ('KInteg 'KBot)),
+                        I ('KConj ('KConf p) ('KInteg 'KBot)) ≽ I p)
+       arising from a use of ‘assertFlowsTo’
+    In the expression: assertFlowsTo ((p *→) *∧ (SBot *←)) p
+     In an equation for ‘neg_flTConf’:
+         neg_flTConf p = assertFlowsTo ((p *→) *∧ (SBot *←)) p
+    Relevant bindings include
+       p :: SPrin p (bound at flTFail001.hs:14:13)
+       neg_flTConf :: SPrin p -> () (bound at flTFail001.hs:14:1)
+

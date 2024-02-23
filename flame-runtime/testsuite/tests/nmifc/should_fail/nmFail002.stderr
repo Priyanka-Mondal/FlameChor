@@ -1,0 +1,21 @@
+
+nmFail002.hs:18:41:
+     Could not deduce (C p ≽ C (C p ∧ I (p ∨ q)),
+                        I (C p ∧ I (p ∨ q)) ≽ I p)
+        arising from a use of ‘reprotect_b’
+      from the context: (BFLA c m e n, q ⊑ Δ q)
+        bound by the type signature for:
+                   nm_two :: (BFLA c m e n, q ⊑ Δ q) =>
+                             SPrin p
+                             -> SPrin q
+                             -> c m e n (Δ q) (I p) (C p ∧ I (p ∨ q)) a
+                             -> c m e n (Δ q) (I p) p a
+        at nmFail002.hs:(15,1)-(17,33)
+      or from: I q ≽ I p
+        bound by a type expected by the context:
+                   (I q ≽ I p) => c m e n (Δ q) (I p) p a
+        at nmFail002.hs:18:16-54
+     In the second argument of ‘iassume’, namely ‘(reprotect_b v)’
+      In the expression: iassume ((q *←) ≽ (p *←)) (reprotect_b v)
+      In an equation for ‘nm_two’:
+          nm_two p q v = iassume ((q *←) ≽ (p *←)) (reprotect_b v)

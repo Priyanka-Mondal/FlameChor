@@ -1,0 +1,141 @@
+cabal-version:       2.4
+name:                flame-runtime
+version:             0.1.0.2
+-- synopsis:            
+-- description:         
+-- license:             
+--license-file:        LICENSE
+author:              Owen Arden
+maintainer:          oarden@ucsc.edu
+-- copyright:           
+-- category:            
+build-type:          Simple
+-- extra-source-files:  
+
+
+library
+  hs-source-dirs:   src
+  exposed-modules:  Flame.Assert,
+                    Flame.TCB.IFC, 
+                    Flame.TCB.Freer.IFC, 
+                    Flame.TCB.Assume, 
+                    Flame.IFC,
+                    Flame.Runtime.IO,
+                    Flame.Runtime.Sealed,
+                    Flame.Runtime.IFCRef, 
+                    Flame.Runtime.Prelude
+                    Flame.Runtime.Crypto
+                    Flame.Runtime.Crypto.KeyMap
+                    Flame.Runtime.Crypto.KeyedPrincipal
+                    Flame.Runtime.Crypto.Util
+                    Flame.Do
+                    Flame.Core
+
+  -- other-modules:       
+  other-extensions: DataKinds, LambdaCase, AllowAmbiguousTypes, PackageImports,
+                    TypeOperators, PostfixOperators, TypeApplications, PartialTypeSignatures,
+                    TypeFamilies,  FlexibleContexts, 
+                    GADTs, PolyKinds, KindSignatures, MultiParamTypeClasses, 
+                    RankNTypes, FlexibleInstances,
+                    OverloadedStrings, RankNTypes, BlockArguments,
+                    UndecidableInstances, IncoherentInstances, Rank2Types, 
+                    ConstraintKinds, ScopedTypeVariables, 
+                    FunctionalDependencies,PackageImports
+  build-depends:    base >=4.9 && <5.0,
+                    flame-plugin,
+                    constraints,
+                    reflection,
+                    containers,
+                    text,
+                    ghc >= 9.4 && <9.5,
+                    async >= 2.2  && < 2.3,
+                    ghc-paths,
+                    bytestring,
+                    base64-bytestring,
+                    cryptonite,
+                    mtl,
+                    cereal,
+                    template-haskell,
+                    haskell-src-meta,
+                    haskell-src-exts,
+                    freer-simple,
+                    HasChor,
+                    
+                   
+
+executable bookseller-1-simple
+    hs-source-dirs:   playground/bookseller-1-simple
+    main-is:          Main.hs
+    default-language: GHC2021
+    build-depends:
+        , flame-plugin
+        , constraints
+        , reflection
+        , containers
+        , mtl
+        , text
+        , base    >= 4.16 && < 4.20
+        , time    >= 1.11 && < 1.13
+        , async >= 2.2  && < 2.3
+        , freer-simple
+        , HasChor
+        , flame-runtime
+
+executable async
+    hs-source-dirs:   playground/async
+    main-is:          Main.hs
+    default-language: GHC2021
+    build-depends:
+        , flame-plugin
+        , constraints
+        , reflection
+        , containers
+        , mtl
+        , text
+        , base    >= 4.16 && < 4.20
+        , time    >= 1.11 && < 1.13
+        , async >= 2.2  && < 2.3
+        , freer-simple
+        , HasChor
+        , flame-runtime
+
+executable avail
+    hs-source-dirs:   playground/availableLargestBal
+    main-is:          Main.hs
+    default-language: GHC2021
+    build-depends:
+        , flame-plugin
+        , constraints
+        , reflection
+        , containers
+        , mtl
+        , text
+        , base    >= 4.16 && < 4.20
+        , time    >= 1.11 && < 1.13
+        , async >= 2.2  && < 2.3
+        , freer-simple
+        , HasChor
+        , flame-runtime
+      
+executable bookseller-2
+    hs-source-dirs:   playground/bookseller-2
+    main-is:          Main.hs
+    default-language: GHC2021
+    build-depends:
+        , flame-plugin
+        , constraints
+        , reflection
+        , containers
+        , mtl
+        , text
+        , base    >= 4.16 && < 4.20
+        , time    >= 1.11 && < 1.13
+        , async >= 2.2  && < 2.3
+        , freer-simple
+        , HasChor
+        , flame-runtime
+
+--  hs-source-dirs:      src
+ -- default-language:    Haskell2010
+
+  --ghc-options:      -fobject-code

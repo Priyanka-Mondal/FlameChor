@@ -1,0 +1,22 @@
+
+inferPcFail001.hs:22:7:
+     Could not deduce: (C (I Alice) ≽ C (I client),
+                         I (I client) ≽ I (I Alice),
+                         C (I Alice) ≽ C pc0,
+                         I pc0 ≽ I (I Alice),
+                         C (I Alice) ≽ C (pc0 ⊔ I client),
+                         I (pc0 ⊔ I client) ≽ I (I Alice))
+        arising from a use of ‘reprotect’
+     In a stmt of a 'do' block: reprotect $ hGetLine stdin
+      In the expression: do { reprotect $ hGetLine stdin }
+      In an equation for ‘inputPass’:
+          inputPass client stdin stdout = do { reprotect $ hGetLine stdin }
+     Relevant bindings include
+        stdout :: IFCHandle (C client) (bound at inferPcFail001.hs:20:24)
+        stdin :: IFCHandle (I client) (bound at inferPcFail001.hs:20:18)
+        client :: SPrin client (bound at inferPcFail001.hs:20:11)
+        inputPass :: SPrin client
+                     -> IFCHandle (I client)
+                     -> IFCHandle (C client)
+                     -> FLAC IO (I Alice) (I Alice) String
+          (bound at inferPcFail001.hs:20:1)

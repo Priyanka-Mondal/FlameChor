@@ -1,0 +1,29 @@
+
+nmFail005.hs:18:45:
+     Could not deduce: (C p ≽ C (C p),
+                         I (C p) ≽ I p,
+                         C (I p) ≽ C (I p),
+                         I (I p) ≽ I (I p),
+                         C (Δ 'KBot) ≽ C (C p),
+                         I (C p) ≽ I (Δ 'KBot))
+        arising from a use of ‘reprotect_b’
+      from the context: BFLA c m e n
+        bound by the type signature for:
+                   nm_five :: BFLA c m e n =>
+                              SPrin p
+                              -> c m e n (Δ 'KBot) (I p) (C p) a -> c m e n (Δ 'KBot) (I p) p a
+        at nmFail005.hs:(15,1)-(17,37)
+      or from: I 'KBot ≽ I p
+        bound by a type expected by the context:
+                   (I 'KBot ≽ I p) => c m e n (Δ 'KBot) (I p) p a
+        at nmFail005.hs:18:15-58
+     In the second argument of ‘iassume’, namely ‘(reprotect_b v)’
+      In the expression: iassume (((SBot) *←) ≽ (p *←)) (reprotect_b v)
+      In an equation for ‘nm_five’:
+          nm_five p v = iassume (((SBot) *←) ≽ (p *←)) (reprotect_b v)
+     Relevant bindings include
+        v :: c m e n (Δ 'KBot) (I p) (C p) a (bound at nmFail005.hs:18:11)
+        p :: SPrin p (bound at nmFail005.hs:18:9)
+        nm_five :: SPrin p
+                   -> c m e n (Δ 'KBot) (I p) (C p) a -> c m e n (Δ 'KBot) (I p) p a
+          (bound at nmFail005.hs:18:1)

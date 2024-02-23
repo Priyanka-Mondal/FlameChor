@@ -1,0 +1,16 @@
+cradle:
+  cabal:
+    - path: "src"
+      component: "lib:flame-runtime"
+
+    - path: "playground/bookseller-1-simple/Main.hs"
+      component: "flame-runtime:exe:bookseller-1-simple"
+
+    - path: "playground/async/Main.hs"
+      component: "flame-runtime:exe:async"
+
+    - path: "playground/availableLargestBal/Main.hs"
+      component: "flame-runtime:exe:avail"
+
+    - path: "playground/bookseller-2/Main.hs"
+      component: "flame-runtime:exe:bookseller-2"
