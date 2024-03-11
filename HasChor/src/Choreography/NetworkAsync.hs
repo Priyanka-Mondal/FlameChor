@@ -20,10 +20,12 @@ type SeqId = Int
 data NetworkSig m a where
   Lift   :: m a -> NetworkSig m a
   Send   :: (Show a) => a -> LocTm -> SeqId -> NetworkSig m (Async Bool)
+  BCast :: (Show a) => a -> SeqId -> NetworkSig m ()
   Recv   :: (Read a) => LocTm -> SeqId -> NetworkSig m (Async a)
   -- not implemented yet
   Offer  :: (Bool -> Network m a) -> NetworkSig m a
   Select :: Bool -> LocTm -> NetworkSig m (Async ())
+  
 
 -- | Monad that represents network programs
 type Network m = Freer (NetworkSig m)

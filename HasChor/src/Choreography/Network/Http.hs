@@ -83,7 +83,7 @@ runNetworkHttp cfg self prog = do
       where
         handler :: MonadIO m => NetworkSig m a -> m a
         handler (Run m)    = m
-        handler(Send a l) = liftIO $ do
+        handler (Send a l) = liftIO $ do
           res <- runClientM (send self $ show a) (mkClientEnv mgr (locToUrl cfg ! l))
           case res of
             Left err -> putStrLn $ "Error : " ++ show err

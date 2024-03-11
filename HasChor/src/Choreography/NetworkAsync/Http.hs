@@ -91,7 +91,7 @@ runNetworkHttp cfg self prog = do
   recvT  <- liftIO $ forkIO (recvThread cfg buf)
   result <- runNetworkMain mgr buf prog
   liftIO $ threadDelay 1000000 -- wait until all outstanding requests to be completed
-  liftIO $ killThread recvT
+  liftIO $ killThread recvT 
   return result
   where
     runNetworkMain :: MonadIO m => Manager -> RecvBuf -> Network m a -> m a
@@ -103,6 +103,7 @@ runNetworkHttp cfg self prog = do
         handler (Recv l id)   = liftIO $ async $ read <$> get (l, id) buf
         handler (Offer _)     = error "not implemented yet"
         handler (Select _ _)  = error "not implemented yet"
+        --handler (BCast a id)  = mapM_ handler $ fmap (Send a) (locs cfg) id
 
     recvThread :: HttpConfig -> RecvBuf -> IO ()
     recvThread cfg buf = run (baseUrlPort $ locToUrl cfg ! self) (serve api $ server buf)
