@@ -19,13 +19,10 @@ type SeqId = Int
 -- | Effect signature for the `Network` monad.
 data NetworkSig m a where
   Lift   :: m a -> NetworkSig m a
-  Send   :: (Show a) => a -> LocTm -> SeqId -> NetworkSig m (Async Bool)
+  Send   :: (Show a) => a -> SeqId -> LocTm -> NetworkSig m (Async Bool)
   BCast :: (Show a) => a -> SeqId -> NetworkSig m ()
   Recv   :: (Read a) => LocTm -> SeqId -> NetworkSig m (Async a)
-  -- not implemented yet
-  Offer  :: (Bool -> Network m a) -> NetworkSig m a
-  Select :: Bool -> LocTm -> NetworkSig m (Async ())
-  
+
 
 -- | Monad that represents network programs
 type Network m = Freer (NetworkSig m)
@@ -38,13 +35,15 @@ lift :: m a -> Network m a
 lift m = toFreer $ Lift m
 
 -- | Send a message to a receiver.
-send :: Show a => a -> LocTm -> SeqId -> Network m (Async Bool)
-send a l id = toFreer $ Send a l id
+send :: Show a => a -> SeqId -> LocTm -> Network m (Async Bool)
+send a id l = toFreer $ Send a id l
 
 -- | Receive a message from a sender.
 recv :: Read a => LocTm -> SeqId -> Network m (Async a)
 recv l id = toFreer $ Recv l id
 
+broadcast :: Show a => a -> SeqId -> Network m ()
+broadcast a id = toFreer $ BCast a id
 ----------------------------------------------------------------------
 -- * Message transport backends
 

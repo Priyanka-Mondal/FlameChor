@@ -36,6 +36,13 @@ data ChoreoSig m a where
        -> Proxy l'
        -> ChoreoSig m (Async a @ l')
 
+  Cond :: (Show a, Read a, KnownSymbol l)
+       => Proxy l
+       -> a @ l
+       -> (a -> Choreo m b) 
+       -> ChoreoSig m b
+  
+
 -- | Monad for writing choreographies.
 type Choreo m = Freer (ChoreoSig m)
 
@@ -51,9 +58,18 @@ epp c l' = evalStateT (interpFreer handler c) 0
       | otherwise       = S.lift (return Empty)
     handler (Comm s a r)
       | toLocTm s == toLocTm r = inc >> S.lift (lift $ liftIO $ wrap <$> async (return (unwrap a)))
-      | toLocTm s == l'        = inc >>= \n ->  S.lift (send (unwrap a) (toLocTm r) n >> return Empty)
+      | toLocTm s == l'        = inc >>= \n ->  S.lift (send (unwrap a) n (toLocTm r) >> return Empty)
       | toLocTm r == l'        = inc >>= \n -> S.lift (wrap <$> recv (toLocTm s) n)
       | otherwise              = inc >> S.lift (return Empty)
+    handler (Cond l a c)
+      | toLocTm l == l' = inc >>= \n -> S.lift (broadcast (unwrap a) n >> epp (c (unwrap a)) l')
+      | otherwise = do 
+                      n <- inc
+                      x <- S.lift $ recv (toLocTm l) n
+                      --value <- S.lift $ wait x
+                      S.lift $ epp (c (wait x)) l'
+        
+        --inc >>= \n -> S.lift ((recv (toLocTm l) n) >>= \x -> epp (c x) l')
 
     inc :: (Monad m) => StateT Int m Int
     inc = do

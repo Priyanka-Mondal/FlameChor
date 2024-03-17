@@ -20,6 +20,7 @@ import Network.Wai.Handler.Warp (run)
 import Servant.API
 import Servant.Client
 import Servant.Server (Handler, Server, serve)
+--import qualified Data.ByteString as cfg
 
 ----------------------------------------------------------------------
 -- * HTTP configuration
@@ -50,6 +51,12 @@ mkHttpConfig = HttpConfig . HashMap.fromList . fmap (fmap f)
 -- * Receive buffer
 
 newtype RecvBuf = RecvBuf (MVar (HashMap (LocTm, SeqId) (MVar String)))
+
+locs :: HttpConfig -> [LocTm]
+locs = HashMap.keys . locToUrl
+
+locs' :: HttpConfig -> SeqId ->[SeqId]
+locs' cfg id = [id | x <- (locs cfg)]
 
 newRecvBuf :: IO RecvBuf
 newRecvBuf = RecvBuf <$> newMVar HashMap.empty
@@ -99,11 +106,9 @@ runNetworkHttp cfg self prog = do
       where
         handler :: MonadIO m => NetworkSig m a -> m a
         handler (Lift m)      = m
-        handler (Send a l id) = liftIO $ async $ isRight <$> runClientM (sendServant self id (show a)) (mkClientEnv mgr (locToUrl cfg ! l))
+        handler (Send a id l) = liftIO $ async $ isRight <$> runClientM (sendServant self id (show a)) (mkClientEnv mgr (locToUrl cfg ! l))
         handler (Recv l id)   = liftIO $ async $ read <$> get (l, id) buf
-        handler (Offer _)     = error "not implemented yet"
-        handler (Select _ _)  = error "not implemented yet"
-        --handler (BCast a id)  = mapM_ handler $ fmap (Send a) (locs cfg) id
+        handler (BCast a id)  = mapM_ handler $ fmap (Send a id) (locs cfg)
 
     recvThread :: HttpConfig -> RecvBuf -> IO ()
     recvThread cfg buf = run (baseUrlPort $ locToUrl cfg ! self) (serve api $ server buf)
