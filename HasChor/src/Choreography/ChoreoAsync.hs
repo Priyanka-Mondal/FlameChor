@@ -15,6 +15,7 @@ import Control.Monad.IO.Class
 import Control.Monad.State hiding (lift)
 import Control.Monad.State qualified as S
 
+
 ----------------------------------------------------------------------
 -- * The Choreo monad
 
@@ -64,7 +65,9 @@ epp c l' = evalStateT (interpFreer handler c) 0
       | otherwise              = inc >> S.lift (return Empty)
     handler (Cond l a c) 
       | toLocTm l /= l' = inc >>= \n -> S.lift ((recv (toLocTm l) n) >>= \x -> epp (c x) l')
-      | otherwise = inc >>= \n -> S.lift $ broadcast (unwrap a) n >> epp (c (unwrap a)) l'
+      | otherwise = inc >>= \n -> S.lift $ broadcast (unwrap a) n >>  do 
+                                                                        as <- lift $ liftIO $ async (return $ unwrap a)
+                                                                        epp (c $ as ) l'
           --where n = inc
       --  where asy =  async (return $ unwrap a)
       --recv (toLocTm l) >>= \x -> epp (c x) l'

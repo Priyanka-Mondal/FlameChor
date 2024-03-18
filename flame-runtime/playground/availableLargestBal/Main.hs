@@ -19,7 +19,7 @@ import Data.List hiding (compare)
 import Data.Monoid (Last(getLast))
 import GHC.Conc.IO (threadDelay)
 import Prelude hiding (compare)
-import Choreography.ChoreoAsync (cond)
+--import Choreography.ChoreoAsync (cond)
 
 
 locA :: Proxy "A"
