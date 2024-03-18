@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE LambdaCase     #-}
 
 module Main where
 
@@ -18,6 +19,7 @@ import Data.List hiding (compare)
 import Data.Monoid (Last(getLast))
 import GHC.Conc.IO (threadDelay)
 import Prelude hiding (compare)
+import Choreography.ChoreoAsync (cond)
 
 
 locA :: Proxy "A"
@@ -63,9 +65,23 @@ availLarBal = do
   availBal <- client `locally` \un -> do select (un bal1') (un bal2') 
   larAv <- client `locally` \un -> do getLargest (un bal1') (un bal2')
   largestAvailBal <- client `locally` \un -> select (un larAv) (un availBal) 
-  client `locally` \un -> do
+  decision <- client `locally` \un -> do
     a <- wait (un largestAvailBal)
     putStrLn (show a)           
+    return (a < 100)
+  
+  decision <- client `locally` \_ -> do
+    return True
+
+  cond (client, decision) do
+        b <- wait decision
+        case b of 
+         True -> do
+           b1 `locally` \_ -> putStrLn "less than 100 b1" 
+           return Nothing 
+         False -> do
+           return Nothing
+
   return largestAvailBal
 
 majorityQuorum :: Choreo IO (Async Int @ "client")

@@ -39,7 +39,7 @@ data ChoreoSig m a where
   Cond :: (Show a, Read a, KnownSymbol l)
        => Proxy l
        -> a @ l
-       -> (a -> Choreo m b) 
+       -> (Async a -> Choreo m b) 
        -> ChoreoSig m b
   
 
@@ -52,6 +52,7 @@ type Choreo m = Freer (ChoreoSig m)
 epp :: (MonadIO m) => Choreo m a -> LocTm -> Network m a
 epp c l' = evalStateT (interpFreer handler c) 0
   where
+    --handler :: ChoreoSig m a -> Network m a
     handler :: (MonadIO m) => ChoreoSig m a -> StateT Int (Network m) a
     handler (Local l m)
       | toLocTm l == l' = S.lift (wrap <$> lift (m unwrap))
@@ -61,16 +62,12 @@ epp c l' = evalStateT (interpFreer handler c) 0
       | toLocTm s == l'        = inc >>= \n ->  S.lift (send (unwrap a) n (toLocTm r) >> return Empty)
       | toLocTm r == l'        = inc >>= \n -> S.lift (wrap <$> recv (toLocTm s) n)
       | otherwise              = inc >> S.lift (return Empty)
-    handler (Cond l a c)
-      | toLocTm l == l' = inc >>= \n -> S.lift (broadcast (unwrap a) n >> epp (c (unwrap a)) l')
-      | otherwise = do 
-                      n <- inc
-                      x <- S.lift $ recv (toLocTm l) n
-                      --value <- S.lift $ wait x
-                      S.lift $ epp (c (wait x)) l'
-        
-        --inc >>= \n -> S.lift ((recv (toLocTm l) n) >>= \x -> epp (c x) l')
-
+    handler (Cond l a c) 
+      | toLocTm l /= l' = inc >>= \n -> S.lift ((recv (toLocTm l) n) >>= \x -> epp (c x) l')
+      | otherwise = inc >>= \n -> S.lift $ broadcast (unwrap a) n >> epp (c (unwrap a)) l'
+          --where n = inc
+      --  where asy =  async (return $ unwrap a)
+      --recv (toLocTm l) >>= \x -> epp (c x) l'
     inc :: (Monad m) => StateT Int m Int
     inc = do
       n <- get
@@ -87,6 +84,14 @@ locally :: KnownSymbol l
                              -- unwrap funciton.
         -> Choreo m (a @ l)
 locally l m = toFreer (Local l m)
+
+cond :: (Show a, Read a, KnownSymbol l)
+     => (Proxy l, a @ l)  -- ^ A pair of a location and a scrutinee located on
+                          -- it.
+     -> (Async a -> Choreo m b) -- ^ A function that describes the follow-up
+                          -- choreographies based on the value of scrutinee.
+     -> Choreo m b
+cond (l, a) c = toFreer (Cond l a c)
 
 -- | Communication between a sender and a receiver.
 (~>) :: (Show a, Read a, KnownSymbol l, KnownSymbol l')
