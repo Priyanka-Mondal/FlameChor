@@ -12,5 +12,8 @@ cradle:
     - path: "playground/availableLargestBal/Main.hs"
       component: "flame-runtime:exe:avail"
 
+    - path: "playground/pBFT/Main.hs"
+      component: "flame-runtime:exe:pbft"
+
     - path: "playground/bookseller-2/Main.hs"
       component: "flame-runtime:exe:bookseller-2"

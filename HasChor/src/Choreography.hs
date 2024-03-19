@@ -8,7 +8,6 @@ module Choreography (
   LocTy,
   type (@),
   mkLoc,
-
   -- * The Choreo monad
   Choreo,
   -- ** Choreo operations

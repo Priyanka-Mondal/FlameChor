@@ -42,7 +42,17 @@ data ChoreoSig m a where
        -> a @ l
        -> (Async a -> Choreo m b) 
        -> ChoreoSig m b
-  
+
+  Broadcast :: (Show a, Read a, KnownSymbol l)
+       => Proxy l
+       -> a @ l
+       -> ChoreoSig m (Async a)
+     
+ --data NetworkSig m a where
+ --Lift   :: m a -> NetworkSig m a
+ --Send   :: (Show a) => a -> SeqId -> LocTm -> NetworkSig m (Async Bool)
+ --BCast :: (Show a) => a -> SeqId -> NetworkSig m ()
+ --Recv   :: (Read a) => LocTm -> SeqId -> NetworkSig m (Async a) 
 
 -- | Monad for writing choreographies.
 type Choreo m = Freer (ChoreoSig m)
@@ -67,8 +77,11 @@ epp c l' = evalStateT (interpFreer handler c) 0
       | toLocTm l /= l' = inc >>= \n -> S.lift ((recv (toLocTm l) n) >>= \x -> epp (c x) l')
       | otherwise = inc >>= \n -> S.lift $ broadcast (unwrap a) n >>  do 
                                                                         as <- lift $ liftIO $ async (return $ unwrap a)
-                                                                        epp (c $ as ) l'
-          --where n = inc
+                                                                        epp (c as) l'
+    handler (Broadcast l a)  
+      | toLocTm l == l' = inc >>= \n -> S.lift $ broadcast (unwrap a) n  >> (lift $ liftIO $ async (return (unwrap a)))
+      | otherwise = inc >>= \n -> S.lift ((recv (toLocTm l) n))
+
       --  where asy =  async (return $ unwrap a)
       --recv (toLocTm l) >>= \x -> epp (c x) l'
     inc :: (Monad m) => StateT Int m Int
@@ -93,8 +106,14 @@ cond :: (Show a, Read a, KnownSymbol l)
                           -- it.
      -> (Async a -> Choreo m b) -- ^ A function that describes the follow-up
                           -- choreographies based on the value of scrutinee.
-     -> Choreo m b
+     -> Choreo m b    
 cond (l, a) c = toFreer (Cond l a c)
+
+broad :: (Show a, Read a, KnownSymbol l)
+     => (Proxy l, a @ l)  -- ^ A pair of a location and a scrutinee located on
+                          -- it.
+     -> Choreo m (Async a)
+broad (l, a) = toFreer (Broadcast l a)
 
 -- | Communication between a sender and a receiver.
 (~>) :: (Show a, Read a, KnownSymbol l, KnownSymbol l')

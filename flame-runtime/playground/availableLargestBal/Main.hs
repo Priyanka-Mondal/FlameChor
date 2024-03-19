@@ -66,21 +66,25 @@ availLarBal = do
   larAv <- client `locally` \un -> do getLargest (un bal1') (un bal2')
   largestAvailBal <- client `locally` \un -> select (un larAv) (un availBal) 
   decision <- client `locally` \un -> do
-    a <- wait (un largestAvailBal)
-    putStrLn (show a)           
-    return (a < 100)
-  
-  decision <- client `locally` \_ -> do
-    return True
+     a <- wait (un largestAvailBal)
+     putStrLn (show a)           
+     return (a < 100)
 
-  cond (client, decision) do
-        b <- wait decision
-        case b of 
-         True -> do
-           b1 `locally` \_ -> putStrLn "less than 100 b1" 
-           return Nothing 
-         False -> do
-           return Nothing
+ 
+
+  cond (client, decision) \case
+         a -> do
+           b1 `locally` \_ -> do 
+                              a' <- wait a
+                              putStrLn $ "less than 101 b1:" ++ (show a')
+           b2 `locally` \_ -> do 
+                              a' <- wait a
+                              putStrLn $ "less than 101 b1:" ++ (show a')
+           client `locally` \_ -> do 
+                                a' <- wait a
+                                putStrLn $ "less than 101 b1:" ++ (show a') 
+
+   
 
   return largestAvailBal
 
