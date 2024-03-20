@@ -97,7 +97,7 @@ runNetworkHttp cfg self prog = do
   buf    <- liftIO $ newRecvBuf
   recvT  <- liftIO $ forkIO (recvThread cfg buf)
   result <- runNetworkMain mgr buf prog
-  liftIO $ threadDelay 1000000 -- wait until all outstanding requests to be completed
+  liftIO $ threadDelay 100000 -- wait until all outstanding requests to be completed
   liftIO $ killThread recvT 
   return result
   where
