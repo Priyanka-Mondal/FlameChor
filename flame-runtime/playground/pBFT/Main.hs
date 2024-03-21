@@ -93,7 +93,8 @@ pbft = do
       readLn :: IO Int
   
   req <- (client, request) ~> leader
-  preprepare (leader, req) locA locB locC --preprepare 
+  preprepare (leader, req) locA locB locC 
+  --prepare --preprepare 
   --- after this the state of all nodes 
   {--printAll locA locB locC (ppa, ppb, ppc)
 
@@ -184,9 +185,33 @@ type family TypeName (a :: *) :: Symbol where
   TypeName (Proxy "C") = "C"
   TypeName (Proxy "D") = "D"
 
+class Transform a where
+  transform :: (a) -> String
+
+instance Transform (Proxy "A") where
+  transform (locA) = "A"
+
+instance Transform (Proxy "B") where
+  transform (locB) = "B"
+
+instance Transform (Proxy "C") where
+  transform (locB) = "C"
+
+instance Transform (Proxy "leader") where
+  transform (locB) = "leader"
+  
+
+transformTo :: forall a. Transform a => a -> String
+transformTo = transform
+{--
+stringToInt1 :: String -> Int
+stringToInt1 = transform . transformTo @Double
+
+stringToInt2 :: String -> Int
+stringToInt2 = transform . transformTo @Rational
 --typeName :: forall a. KnownSymbol a => String
 --typeName = symbolVal (Proxy @(TypeName (Proxy a)))
-
+--}
 
 {--nodeToString :: Proxy a -> String
 nodeToString locA = "A"
@@ -201,6 +226,7 @@ preprepare (loca, req) locb locc locd = do
                                 r <- wait $ un req
                                 let b = updateState ("leader") -- >>= \x -> return x
                                 putStrLn $ "leader sent:" ++ show r
+                                let s = transformTo (loca)
                                 return r
   
   pa <- (loca, req') ~> locb
