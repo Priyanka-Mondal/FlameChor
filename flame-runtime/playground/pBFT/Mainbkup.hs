@@ -28,7 +28,6 @@ import qualified Data.Array as A
 import Data.HashMap.Strict qualified as HM
 import Data.HashMap.Strict (HashMap, (!), insert) 
 import Data.Map.Internal.Debug (node)
-import Data.Bits (Bits(xor))
 --import Control.Monad.StateT qualified as SeqT
 --import Choreography.ChoreoAsync (cond)
 
@@ -96,24 +95,23 @@ pbft = do
       readLn :: IO Int
   
   req <- (client, request) ~> leader
-  req' <- leader `locally` \un -> do 
-                        x <- wait (un req)
-                        return x 
-  (leader,req') ~> locA 
-  --(ppa, ppb, ppc) <- preprepare (leader, req) locA locB locC 
-  --prepare (locA, ppa) (locB, ppb) (locC, ppc)  --preprepare 
-  st <- Seq.evalStateT (pprep (req, leader, locA)) (startState)
-  sl <- leader `locally` \_ -> do 
-    let s' = st ! "leader"
-    putStrLn (show s') 
-    return s'
-
-  sa <- locA `locally` \_ -> do 
-    let s' = st ! "A"
-    putStrLn (show s') 
-    return s'
+  (ppa, ppb, ppc) <- preprepare (leader, req) locA locB locC 
+  prepare (locA, ppa) (locB, ppb) (locC, ppc)  --preprepare 
   --checkState (locA)
-  
+  --- after this the state of all nodes 
+  {--printAll locA locB locC (ppa, ppb, ppc)
+
+  (pab, pac, pal) <- prepare (locA, ppa) locB locC leader  -- prepare from A
+  (pba, pbc, pbl) <- prepare (locB, ppb) locA locC leader  -- prepare from B
+  (pca, pcb, pcl) <- prepare (locC, ppc) locA locB leader  -- prepare from C
+  (pla, plb, plc) <- prepare (leader, ppl) locA locB locC
+
+  (cab, cac, cal) <- prepare (locA, ppa) locB locC leader  -- commit from A
+  (cba, cbc, cbl) <- prepare (locB, ppb) locA locC leader  -- commit from B
+  (cca, ccb, ccl) <- prepare (locC, ppc) locA locB leader  -- commit from C
+  (cla, clb, clc) <- prepare (leader, ppl) locA locB leader  -- commit from leader
+  --}
+
   return () 
 
 
@@ -123,7 +121,10 @@ data NodeState = INIT | PREPREPARE | PREPARE | COMMIT | COMMITTED
 
 --type StateMachine = Seq.StateT NodeState 
 
-data SystemState =  HashMap (String) NodeState
+data SystemState a = SystemState 
+  { nodeState :: HashMap (String) NodeState
+  --, currentNode :: Proxy a 
+  }
 
 nextState :: NodeState -> NodeState 
 nextState INIT = PREPREPARE
@@ -132,41 +133,33 @@ nextState PREPARE = COMMIT
 nextState COMMIT = COMMITTED
 nextState COMMITTED = INIT 
 
-updateState :: (Monad m) => String -> Seq.StateT ( HashMap (String) NodeState) m ( HashMap (String) NodeState) 
+updateState :: String -> Seq.StateT (SystemState a) IO (SystemState a)
 updateState locA = do
     current <- Seq.get
-    let state = current ! locA
+    let arraystate = nodeState current 
+    let state = arraystate ! locA
     let nextstate = nextState state 
-    let newState =  HM.insert locA nextstate current
-    Seq.put $ newState
-    return (newState)
+    let newState =  HM.insert locA nextstate arraystate
+    Seq.liftIO $ print state
+    Seq.put $ current {nodeState = newState}
+    return (current)
 
 type Node = String
 
 keys :: [Node]
 keys = ["A", "B", "C", "leader"]
 
+-- Create the initial HashMap
 startState :: HM.HashMap (Node) NodeState
 startState = HM.fromList [(key, INIT) | key <- keys]
 
-pprep :: forall (a:: LocTy) (b:: LocTy) m. (KnownSymbol a, KnownSymbol b, Seq.MonadIO m) => 
-                     (Async (Int) @ a, Proxy a, Proxy b) -> Seq.StateT ( HashMap (String) NodeState) (Choreo m) ( HashMap (String) NodeState)
-pprep (req, locl, loc) =  do
-                           req' <- Seq.lift (locl `locally` \un -> do 
-                              x <-  Seq.liftIO $ wait (un req) 
-                              return x )
-                           prepa <- Seq.lift ((locl,req') ~> loc)
-                           updateState (proxyToString locl) >> prep (loc, prepa) 
+getNextNumber :: Seq.StateT Int IO Int
+getNextNumber = do
+    current <- Seq.get
+    Seq.put (current + 1)
+    Seq.liftIO $ putStrLn $ show current
+    return (current)
 
-prep :: forall (a:: LocTy) m. (KnownSymbol a, Seq.MonadIO m) => 
-                     (Proxy a, Async Int @ a) -> Seq.StateT ( HashMap (String) NodeState) (Choreo m) ( HashMap (String) NodeState)
-prep (locl, msg) =  do
-                    req' <- Seq.lift (locl `locally` \un -> do 
-                              x <-  Seq.liftIO $ wait (un msg) 
-                              Seq.liftIO $ putStrLn $ "mymsg:" ++ (show x)
-                              return x )
-                    updateState (proxyToString locl)                           
-                      
 runStateTInIO :: Seq.StateT Int IO Int -> IO Int
 runStateTInIO computation = Seq.evalStateT computation 0
 
@@ -176,17 +169,86 @@ proxyToString :: forall a. KnownSymbol a => Proxy a -> String
 proxyToString _ = symbolVal (Proxy @a)
 -- Async (Int, Int, String) @ b, Async (Int, Int, String) @ c, Async (Int, Int, String) @ d
 
-{--checkState :: forall (a:: LocTy). (KnownSymbol a) => (Proxy a) 
-              -> Seq.StateT (SystemState) IO NodeState
+checkState :: forall (a:: LocTy). (KnownSymbol a) => (Proxy a) 
+              -> Seq.StateT (SystemState a) IO NodeState
 checkState loc = do 
             let s = proxyToString loc 
             updateState s >>= \x -> Seq.lift (do 
                                               putStrLn "yayyy"
-                                              return ((x) ! s))
+                                              return ((nodeState x) ! s))
             --let arraystate = nodeState current 
             --let state = arraystate ! s 
             --return state 
---}
+
+prepare :: forall (a :: LocTy) (b :: LocTy) (c :: LocTy) (d :: LocTy). 
+           (KnownSymbol a, KnownSymbol b, KnownSymbol c) =>
+           (Proxy a, Async (String) @ a) 
+           -> (Proxy b, Async String @ b) -> (Proxy c, Async String @ c) 
+           -> Choreo IO ()
+prepare (loca, msga) (locb, msgb ) (locc, msgc) = do
+    reqa <- loca `locally` \un -> do 
+                                   let s = proxyToString loca 
+                                   st <- wait $ un msga
+                                   let b = updateState s
+                                   putStrLn $ s ++" : ==> preprepareD " 
+                                   return (prep) -- need to return a seq
+                                  -- else return ("NULL")
+    ppa <- (loca, reqa) ~> locb
+    ppb <- (loca, reqa) ~> locc
+
+    reqb <- locb `locally` \un -> do 
+                                   let s = proxyToString locb 
+                                   st <- wait $ un msgb
+                                   let b = updateState s
+                                   putStrLn $ s ++" : ==> preprepareD " 
+                                   return (prep) -- need to return a seq
+                                  -- else return ("NULL")
+    ppa <- (locb, reqb) ~> loca
+    ppb <- (locb, reqb) ~> locc
+    
+    reqc <- locc `locally` \un -> do 
+                                   let s = proxyToString locb 
+                                   st <- wait $ un msgc
+                                   let b = updateState s
+                                   putStrLn $ s ++" : ==> preprepareD " 
+                                   return (prep) -- need to return a seq
+                                  -- else return ("NULL")
+    ppa <- (locc, reqc) ~> loca
+    ppb <- (locc, reqc) ~> locb
+    return ()
+
+preprepare :: forall (a :: LocTy) (b :: LocTy) (c :: LocTy) (d :: LocTy). (KnownSymbol a, KnownSymbol b, KnownSymbol c, KnownSymbol d) =>
+          (Proxy a, Async Int @ a) -> Proxy b -> Proxy c -> Proxy d 
+          -> Choreo IO (Async String @ b, Async String @ c, Async String @ d)
+preprepare (loca, req) locb locc locd = do
+  req' <- loca `locally` \un -> do 
+                                r <- wait $ un req
+                                let s = proxyToString loca 
+                                let b = updateState s
+                                putStrLn $ s ++" sending :==>" ++ show r
+                                return preprep
+  ppa <- (loca, req') ~> locb                  
+  ppb <- (loca, req') ~> locc
+  ppc <- (loca, req') ~> locd
+  ppd <- (loca, req') ~> loca
+  return (ppa, ppb, ppc)
+
+pre_prepare :: forall (a :: LocTy) (b :: LocTy) (c :: LocTy) (d :: LocTy). (KnownSymbol a, KnownSymbol b, KnownSymbol c, KnownSymbol d) =>
+          Proxy a -> Proxy b -> Proxy c -> Proxy d -> Async Int @ a -> Choreo IO (Async (Int, Int, String) @ b, Async (Int, Int, String) @ c,
+                                 Async (Int, Int, String) @ d, Async (Int, Int, String) @ a)
+pre_prepare loca locb locc locd req = do
+  req' <- loca `locally` \un -> do 
+                                   r <- wait $ un req
+                                   let by = getNextNumber >>= \x -> return x
+                                   num <- newRand
+                                   return (r, num, preprep) -- need to return a seq#
+  ppa <- (loca, req') ~> locb
+  ppb <- (loca, req') ~> locc
+  ppc <- (loca, req') ~> locd
+  ppd <- (loca, req') ~> loca
+  loca `locally` \_ -> putStrLn "sent"
+  return (ppa, ppb, ppc, ppd)
+
 
 printAll :: forall (a :: LocTy) (b :: LocTy) (c :: LocTy). (KnownSymbol a, KnownSymbol b, KnownSymbol c) =>
           Proxy a -> Proxy b -> Proxy c -> (Async (Int, Int, String) @ a, Async (Int, Int, String) @ b,
@@ -206,11 +268,12 @@ printAll loca locb locc (ppa, ppb, ppc) = do
 pBFTMain :: HttpConfig -> IO ()
 pBFTMain cfg = do
   [loc] <- getArgs
-  void $ runChoreography cfg pbft loc -- >> (pBFTMain cfg)
+  void $ runChoreography cfg pbft loc >> (pBFTMain cfg)
  
 preprep :: String
 preprep = "preprepare"
-
+prep :: String
+prep = "prepare"
 
 main = do 
   pBFTMain cfg 
