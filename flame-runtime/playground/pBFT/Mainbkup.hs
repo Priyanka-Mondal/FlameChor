@@ -304,3 +304,7 @@ playGame (x:xs) = do
 
 
 --main = print $ Seq.evalState (playGame ["cbbbcaacaa"]) (False, 0)
+
+req' <- Seq.lift (locl `locally` \un -> do 
+                              x <-  Seq.liftIO $ wait (un req) 
+                              return x )

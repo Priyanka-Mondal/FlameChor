@@ -6,6 +6,11 @@ import Control.Monad.IO.Class
 import Control.Concurrent.Async
 import Prelude hiding (compare)
 import System.Timeout 
+--import Main (NodeState)
+
+
+data NodeState = INIT | PREPREPARE | PREPARE | COMMIT | COMMITTED
+  deriving (Eq, Show, Ord, Read) 
 
 class HasFail a where
   failVal :: a
@@ -14,7 +19,12 @@ instance HasFail Int where
   failVal = -1
 
 instance HasFail String where
+  failVal :: String
   failVal = "fail"
+
+instance HasFail NodeState where
+  failVal = INIT
+
 
 time :: Int 
 time = 10000000
