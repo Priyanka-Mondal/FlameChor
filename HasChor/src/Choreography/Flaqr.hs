@@ -29,7 +29,7 @@ instance HasFail NodeState where
 time :: Int 
 time = 10000000
 
-
+--simple select between 2 values
 select :: (HasFail a, Eq a) => Async a -> Async a -> IO (Async a)
 select a b = do
     a' <- timeout time (wait a)
@@ -41,6 +41,24 @@ select a b = do
           (Just e) -> return b
           Nothing -> (async (return failVal))
 
+{--selecT :: (HasFail a, Eq a) =>[(Async a)] -> IO (Async a)
+selecT [] = error "ERROR: Empty list of asynchronous computations."
+selecT [a] =  do 
+ -- a'<- a 
+  select2' a
+selecT (a:as) = do 
+   a''<- wait a 
+   a' <- (timeout time (wait a))
+   case a' of 
+      (Just e) | (e /= failVal) -> return a
+      _ ->  (selecT as)--}
+ 
+selecT ::  (HasFail a, Eq a) => IO ([IO (Async a)])  -> IO (Async a)
+selecT as = do 
+  as' <- as 
+  select_ as'
+  
+--select one from the given list
 select_ :: (HasFail a, Eq a) =>[IO (Async a)] -> IO (Async a)
 select_ [] = error "ERROR: Empty list of asynchronous computations."
 select_ [a] =  do 
@@ -53,6 +71,15 @@ select_ (a:as) = do
       (Just e) | (e /= failVal) -> return a''
       _ ->  (select_ as)
  
+{--select2' :: (HasFail a, Eq a) => Async a -> IO (Async a)
+select2' a = do
+    a' <- timeout time (wait a)
+    case a' of 
+      (Just e) | (e /= failVal) -> return a
+      _ -> (async (return failVal))--}
+
+
+--select of one value, i.e. returns fail when that one value is not avaialable
 select' :: (HasFail a, Eq a) => Async a -> IO (Async a)
 select' a = do
     a' <- timeout time (wait a)
@@ -66,6 +93,7 @@ combinations _ [] = []
 combinations n (x:xs) = [ x:rest | rest <- combinations (n-1) xs ] ++ combinations n xs
 
 
+-- compare between i elements from the list of given async values
 compare_ :: forall a. (Ord a, HasFail a) => [Async a] -> Int -> IO ([IO (Async a)])
 compare_ xs i = return ((map comparec) com)
   where 
@@ -76,6 +104,7 @@ comparec [] = error "ERROR: Empty list of asynchronous computations."
 comparec [a] = compare'' a
 comparec (x:ys) = compare' x ys 
 
+--comapare of one value, equivalent to select of one value
 compare'' :: (HasFail a, Eq a) => Async a -> IO (Async a)
 compare'' a = select' a
 
@@ -91,6 +120,7 @@ compare' x (y:ys) = do
           Nothing -> async (return failVal)
       _ -> async (return failVal)
 
+--simple compare between 2 values 
 compare :: forall a. (Ord a, HasFail a) => Async a -> Async a -> IO (Async a)
 compare a b = do
     a' <- timeout time (wait a)
