@@ -120,8 +120,26 @@ updateState locA x = do
     let state = fst current ! locA
     let nextstate = nextState state 
     let newState =  HM.insert locA nextstate (fst current)
-    Seq.put $ (newState, snd current)
+    Seq.put (newState, snd current)
     return (newState, snd current)
+
+updateA :: (Seq.StateT NodeState m (Choreo IO NodeState)) @ "A"
+updateA = do
+  locA `locally` \_ -> do 
+    current <- Seq.get
+    let nextstate = nextState current
+    Seq.put nextstate
+    return nextstate
+
+
+{--updateA :: forall (a:: LocTy) m. (KnownSymbol a, Monad m) => Proxy a -> Choreo IO ((Seq.StateT NodeState m NodeState) @ a)
+updateA loca = do
+  loca `locally` \_ -> do 
+    current <- Seq.get
+    let nextstate = nextState current 
+    Seq.put $ current
+    return nextState
+  --}
 
 startState :: HM.HashMap (Node) NodeState
 startState = HM.fromList [(key, INIT) | key <- keys]
