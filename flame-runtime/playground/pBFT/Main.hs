@@ -59,10 +59,17 @@ proxyToString _ = symbolVal (Proxy @a)
 times3 :: Int -> Int
 times3 x =  x*3 
 
+type State = String 
+
 pbft :: Choreo IO () --forall (a:: LocTy). (KnownSymbol a) => Seq.StateT (SystemState a) IO NodeState --Choreo IO ()
 pbft = do 
+  locAState <- locA `locally` \_ -> newIORef ("INIT" :: State)
+  locBState <- locB `locally` \_ -> newIORef ("INIT" :: State)
+  locCState <- locA `locally` \_ -> newIORef ("INIT" :: State)
+  locLState <- locB `locally` \_ -> newIORef ("INIT" :: State)
+
   request <- client `locally` \_ -> do
-      putStrLn "Client$ Enter value to be proposed:"
+      putStrLn "Client$ Input:"
       readLn :: IO Int
   
   req <- (client, request) ~> leader
@@ -123,23 +130,11 @@ updateState locA x = do
     Seq.put (newState, snd current)
     return (newState, snd current)
 
-updateA :: (Seq.StateT NodeState m (Choreo IO NodeState)) @ "A"
+{--updateA :: Choreo IO () -- @ "A"
 updateA = do
   locA `locally` \_ -> do 
-    current <- Seq.get
-    let nextstate = nextState current
-    Seq.put nextstate
-    return nextstate
-
-
-{--updateA :: forall (a:: LocTy) m. (KnownSymbol a, Monad m) => Proxy a -> Choreo IO ((Seq.StateT NodeState m NodeState) @ a)
-updateA loca = do
-  loca `locally` \_ -> do 
-    current <- Seq.get
-    let nextstate = nextState current 
-    Seq.put $ current
-    return nextState
-  --}
+    case stateA
+--}
 
 startState :: HM.HashMap (Node) NodeState
 startState = HM.fromList [(key, INIT) | key <- keys]
