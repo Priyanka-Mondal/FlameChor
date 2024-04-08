@@ -9,8 +9,8 @@ import System.Timeout
 --import Main (NodeState)
 
 
-data NodeState = INIT | PREPREPARE | PREPARE | COMMIT | COMMITTED
-  deriving (Eq, Show, Ord, Read) 
+--data NodeState = INIT | PREPREPARE | PREPARE | COMMIT | COMMITTED
+--  deriving (Eq, Show, Ord, Read) 
 
 class HasFail a where
   failVal :: a
@@ -22,8 +22,8 @@ instance HasFail String where
   failVal :: String
   failVal = "fail"
 
-instance HasFail NodeState where
-  failVal = INIT
+--instance HasFail NodeState where
+--  failVal = INIT
 
 
 time :: Int 
@@ -39,7 +39,7 @@ select a b = do
          b' <- timeout time (wait b)
          case b' of 
           (Just e) -> return b
-          Nothing -> (async (return failVal))
+          Nothing -> async (return failVal)
 
 {--selecT :: (HasFail a, Eq a) =>[(Async a)] -> IO (Async a)
 selecT [] = error "ERROR: Empty list of asynchronous computations."

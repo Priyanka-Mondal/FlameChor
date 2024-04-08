@@ -37,6 +37,10 @@ unwrap :: a @ l-> a
 unwrap (Wrap a) = a
 unwrap Empty    = error "this should never happen for a well-typed choreography"
 
+-- pack back Empty 
+-- (bob ! a ) @ l --> bob ! (a @ l) at l
+--                    bob ! (Empty) when not at l
+
 -- | Define a location at both type and term levels.
 mkLoc :: String -> Q [Dec]
 mkLoc loc = do

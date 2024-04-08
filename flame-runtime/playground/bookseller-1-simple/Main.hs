@@ -47,7 +47,7 @@ seller = SName (Proxy :: Proxy "seller")
 type BS = (Buyer \/ Seller)
 
 bs :: SPrin BS
-bs = (buyer *\/ seller)
+bs = buyer *\/ seller
 
 type FromBuyer = BS
 fromBuyer :: SPrin BS
@@ -69,17 +69,18 @@ labelIn :: l!(a @ loc) -> (l!a) @ loc
 labelIn lal = wrap $ bind lal (label . unwrap)
 
 labelIn' :: Monad m => Labeled m pc (l!(a @ loc)) -> Labeled m pc ((l!a) @ loc)
-labelIn' e = e >>= (\lal -> wrap <$> (use lal (protect . unwrap)))
+labelIn' e = e >>= (\lal -> wrap <$> use lal (protect . unwrap))
 
 -- | Interpret the effects in a freer monad in terms of another monad.
 wrapLabeled :: forall pc m a loc. Monad m => Labeled m pc a -> Labeled m pc (a @ loc)
 wrapLabeled = Prelude.fmap wrap --- ???
 
 labelOut :: (l!a) @ loc -> l!(a @ loc) 
-labelOut lal = bind (unwrap lal) (label . wrap)
+labelOut lal = bind (unwrap lal) (label . wrap) -- require a locally ?? 
+-- new unwrap version that labels and wrap Empty 
 
 labelOut' :: (Monad m, l ⊑ l'', l' ⊑ l'') => Labeled m pc ((l!a) @ loc) -> Labeled m pc (l!(a @ loc))
-labelOut' e = e >>= (\lal -> (use (unwrap lal) (protect . wrap)))
+labelOut' e = e >>= (\lal -> use (unwrap lal) (protect . wrap))
 
 joinIn :: forall l l' l'' a loc. (l ⊑ l'', l' ⊑ l'') => l!((l'!a) @ loc) -> (l''!a) @ loc
 joinIn = wrap . join . unwrap . labelIn
@@ -88,7 +89,7 @@ joinIn' :: forall l l' l'' pc m a loc.
   (Monad m, l ⊑ l'', l' ⊑ l'') => Labeled m pc (l!((l'!a) @ loc)) -> Labeled m pc ((l''!a) @ loc)
 joinIn' lx = wrap <$> do 
   x <- lx 
-  let x' = (joinIn @l @l' @l'' x) -- why didn't this get inferred?
+  let x' = joinIn @l @l' @l'' x -- why didn't this get inferred?
   use (unwrap x') protect
 
 joinOut :: forall l l' l'' a loc. (l ⊑ l'', l' ⊑ l'') => l!((l'!a) @ loc) -> l''!(a @ loc)
@@ -116,27 +117,27 @@ slocally (pc, loc, loc_pc, l) k = do
   return $ labelIn result
 
 -- | Conditionally execute choreographies based on a located value.
-s_cond ::  forall pc l loc m a b. (Show a, Read a, KnownSymbol loc, pc ⊑ l)
-     => (Proxy loc, SPrin pc, (a @ loc)) -- ^ A pair of a location and a scrutinee located on
+sCond ::  forall pc l loc m a b. (Show a, Read a, KnownSymbol loc, pc ⊑ l)
+     => (Proxy loc, SPrin pc, a @ loc) -- ^ A pair of a location and a scrutinee located on
                                          -- it.
      -> (a -> Labeled (Choreo m) pc b) -- ^ A function that describes the follow-up
                           -- choreographies based on the value of scrutinee.
      -> Labeled (Choreo m) pc (l!b)
-s_cond (l, pc, la) c = restrict pc $ \_ -> cond (l, la) (\la -> runLabeled $ c la)
+sCond (l, pc, la) c = restrict pc $ \_ -> cond (l, la) (\la -> runLabeled $ c la)
 
 
-s_putStrLn :: Show a => SPrin pc -> (l ⊑ pc) => l!a -> Labeled IO pc (pc!())
-s_putStrLn pc la = restrict pc (\open -> putStrLn (show $ open la))
+sPutStrLn  :: Show a => SPrin pc -> (l ⊑ pc) => l!a -> Labeled IO pc (pc!())
+sPutStrLn  pc la = restrict pc (\open -> print $ open la)
 
-s_getLine :: SPrin pc -> Labeled IO pc (pc!String)
-s_getLine pc = restrict pc (\_ -> getLine)
+sGetLine  :: SPrin pc -> Labeled IO pc (pc!String)
+sGetLine  pc = restrict pc (\_ -> getLine)
 
 safePutStrLn :: forall l a. (Show a, l ⊑ BS) => l!a 
                       -> Labeled IO BS (BS!())
-safePutStrLn =  s_putStrLn bs
+safePutStrLn =  sPutStrLn  bs
 
 buyerGetLine :: Labeled IO FromBuyer (FromBuyer!String)
-buyerGetLine = s_getLine fromBuyer
+buyerGetLine = sGetLine  fromBuyer
 
 -- | `bookseller` is a choreography that implements the bookseller protocol.
 --Choreo IO (Maybe Day @ "buyer")
@@ -155,18 +156,18 @@ bookseller = do
   price <- (bs, seller, bs, fromSeller) `slocally` (\un -> do
     use @_ @_ @_ @BS (join @_ @_ @BS (un title')) (\t -> protect $ priceOf t))
   -- the seller sends back the price of the book to the buyer
-  price' <- ((sym seller, bs, fromSeller, price) ~>: sym buyer)
+  price' <- (sym seller, bs, fromSeller, price) ~>: sym buyer
  
   -- the buyer decides whether to buy the book or not
   decision <- (bs, buyer, bs, fromBuyer) `slocally` (\un -> do
     use @_ @_ @_ @BS (join @_ @_ @BS (un price')) (\p -> protect (p < budget)))
  
   -- if the buyer decides to buy the book, the seller sends the delivery date to the buyer
-  labelIn' (s_cond (sym buyer, bs, decision) $ (\d -> labelIn' $ use d (\case
+  labelIn' (sCond (sym buyer, bs, decision) $ (\d -> labelIn' $ use d (\case
     True  -> do
       deliveryDate  <- (bs, seller, bs, fromSeller) `slocally` (\un -> do
         use @_ @_ @_ @BS (join (un title')) (\t -> protect $ deliveryDateOf t))
-      deliveryDate' <- ((sym seller, bs, fromSeller, deliveryDate) ~>: sym buyer)
+      deliveryDate' <- (sym seller, bs, fromSeller, deliveryDate) ~>: sym buyer
  
       labelOut' ((bs, buyer, bs, fromBuyer) `slocally` (\un -> do
         use (join (un deliveryDate')) 
