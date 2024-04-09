@@ -106,9 +106,9 @@ comparec (x:ys) = compare' x ys
 
 --comapare of one value, equivalent to select of one value
 compare'' :: (HasFail a, Eq a) => Async a -> IO (Async a)
-compare'' a = select' a
+compare'' = select'
 
-compare' :: forall a. (Ord a, HasFail a) => (Async a) -> [Async a] -> IO (Async a)
+compare' :: forall a. (Ord a, HasFail a) => Async a -> [Async a] -> IO (Async a)
 compare' x [y] = compare x y
 compare' x (y:ys) = do 
     a' <- timeout time (wait x)

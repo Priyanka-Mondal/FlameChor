@@ -122,6 +122,7 @@ preprepare :: forall (a:: LocTy) (b:: LocTy) (c :: LocTy) (l :: LocTy) m.
 preprepare (req, locl, statel, loca, statea, locb, stateb, locc, statec) =  do
                            req' <- locl `locally` \un -> do  
                             x <- wait (un req)  
+                            putStrLn $ "prepare leader:" ++ show x
                             modifyIORef (un statel) nextState 
                             return x
                            prepa <-  (locl,req') ~> loca
@@ -131,10 +132,10 @@ preprepare (req, locl, statel, loca, statea, locb, stateb, locc, statec) =  do
 
 prepare :: forall (l :: LocTy) (a:: LocTy) (b:: LocTy) (c :: LocTy) m. (KnownSymbol l, KnownSymbol a, KnownSymbol b, KnownSymbol c) => 
          (Proxy l, IORef State @ l, Async Int @ l)  
-      ->    (Proxy a, IORef State @ a, Async Int @ a) 
+      ->  (Proxy a, IORef State @ a, Async Int @ a) 
       ->  (Proxy b, IORef State @ b ,Async Int @ b) 
       ->  (Proxy c, IORef State @ c, Async Int @ c)  
-      ->  Choreo IO ([Async Int @ l], [Async Int @ a], [Async Int @ b], [Async Int @ c])
+      ->  Choreo IO ([Async Int] @ l, [Async Int] @ a, [Async Int] @ b, [Async Int] @ c)
 prepare (locl, statel, req) (loca, statea, msga) (locb, stateb, msgb) (locc, statec, msgc) =  do
                     reqa <-  loca `locally` \un -> do 
                               x <-  wait (un msga) 
@@ -162,28 +163,29 @@ prepare (locl, statel, req) (loca, statea, msga) (locb, stateb, msgb) (locc, sta
                     cl <- (locc, reqc) ~> locl
                     ca <- (locc, reqc) ~> loca
                     cb <- (locc, reqc) ~> locb 
-                    
-                    retl <- locl `locally` \un -> return [req, al, bl, cl]
-
-                    return ([req, al, bl, cl], [msga, ba, ca], [msgb, ab, cb], [msgc, ac, bc])
+                    retl <- locl `locally` \un -> return [un req, un al, un bl, un cl]
+                    reta <- loca `locally` \un -> return [un msga, un ba, un ca]
+                    retb <- locb `locally` \un -> return [un msgb, un ab, un cb]
+                    retc <- locc `locally` \un -> return [un msgc, un ac, un bc]
+                    return (retl, reta, retb, retc) 
                 
                   
 commit :: forall (l::LocTy) (a :: LocTy) (b :: LocTy) (c :: LocTy). 
           (KnownSymbol l, KnownSymbol a, KnownSymbol b, KnownSymbol c) => 
-             (Proxy l, IORef State @ l, [Async Int @ l]) 
-          -> (Proxy a, IORef State @ a, [Async Int @ a]) 
-          -> (Proxy b, IORef State @ b, [Async Int @ b]) 
-          -> (Proxy c, IORef State @ c, [Async Int @ c]) 
+             (Proxy l, IORef State @ l, [Async Int] @ l) 
+          -> (Proxy a, IORef State @ a, [Async Int] @ a) 
+          -> (Proxy b, IORef State @ b, [Async Int] @ b) 
+          -> (Proxy c, IORef State @ c, [Async Int] @ c) 
           -> Choreo IO (Async Int @ l, Async Int @ a, Async Int @ b, Async Int @ c)
 commit  (locl, statel, ls) (loca, statea, as) (locb, stateb, bs) (locc, statec, cs) =  do 
-    let outl = locOut ls  
+    --let outl = locOut ls  
     repl <- locl `locally` \un -> do 
-                              x <-  selecT $ compare_ (un outl) 2
+                              x <-  selecT $ compare_ (un ls) 2
                               y <- readIORef $ un statel
-                              if y == "PREPARE" then 
+                              if y == "PREPREPARE" then 
                                 do
                                   modifyIORef (un statel) nextState 
-                                  putStrLn "commit leader:" -- ++ un statel
+                                  putStrLn "commit leader:"  -- ++ un statel
                                   return x 
                                else 
                                 do 
@@ -191,26 +193,27 @@ commit  (locl, statel, ls) (loca, statea, as) (locb, stateb, bs) (locc, statec, 
                                   modifyIORef init nextState 
                                   async $ return failVal
     
-    let outa = locOut as  
+    --let outa = locOut as  
     repa <- loca `locally` \un -> do 
-                              x <- selecT $ compare_ (un outa) 2
+                              x <- selecT $ compare_ (un as) 2
                               y <- readIORef $ un statea
-                              if y == "PREPARE" then 
+                              if y == "PREPREPARE" then 
                                 do
                                   modifyIORef (un statea) nextState 
                                   putStrLn "commit A:" -- ++ un statel
                                   return x 
                                else 
                                 do 
+                                  print y
                                   init <- newioref
                                   modifyIORef init nextState 
                                   async $ return failVal
     
-    let outb = locOut bs  
+    --let outb = locOut bs  
     repb <- locb `locally` \un -> do 
-                              x <-   selecT $ compare_ (un outb) 2 
+                              x <-   selecT $ compare_ (un bs) 2 
                               y <- readIORef $ un stateb
-                              if y == "PREPARE" then 
+                              if y == "PREPREPARE" then 
                                 do
                                   modifyIORef (un stateb) nextState 
                                   putStrLn "commit B:" -- ++ un statel
@@ -221,11 +224,11 @@ commit  (locl, statel, ls) (loca, statea, as) (locb, stateb, bs) (locc, statec, 
                                   modifyIORef init nextState 
                                   async $ return failVal
   
-    let outc = locOut cs  
+    --let outc = locOut cs  
     repc <- locc `locally` \un -> do 
-                              x <-  selecT $ compare_ (un outc) 2
+                              x <-  selecT $ compare_ (un cs) 2
                               y <- readIORef $ un statec
-                              if y == "PREPARE" then 
+                              if y == "PREPREPARE" then 
                                 do
                                   modifyIORef (un statec) nextState 
                                   putStrLn "commit C:" -- ++ un statel
@@ -250,39 +253,39 @@ reply (locl, statel, repl) (loca, statea, repa) (locb, stateb, repb) (locc, stat
     repl' <- locl `locally` \un -> do 
                               x <- wait (un repl)
                               modifyIORef (un statel) nextState
-                              putStrLn "reply leader:" -- ++ show $ un statel
+                              putStrLn $ "reply leader:" ++ show (times3 x) -- ++ un statea
                               if x /= failVal then return $ times3 x else return failVal 
     rl <-  (locl, repl') ~> client
 
     repa <- loca `locally` \un -> do 
                               x <-  wait $ un repa
                               modifyIORef (un statea) nextState
-                              putStrLn "reply A:" -- ++ un statea
+                              putStrLn $ "reply A:" ++ show (times3 x) -- ++ un statea
                               if x /= failVal then return $ times3 x else return failVal
     ra <- (loca, repa) ~> client
 
     repb <- locb `locally` \un -> do 
                                x <- wait $ un repb
                                modifyIORef (un stateb) nextState
-                               putStrLn "reply B:" -- ++ un stateb
+                               putStrLn $ "reply B:" ++ show (times3 x) 
                                if x /= failVal then return $ times3 x else return failVal
     rb <- (locb, repb) ~> client
 
     repc <- locc `locally` \un -> do 
                                x <- wait $ un repc
                                modifyIORef (un statec) nextState
-                               putStrLn "reply C:" -- ++ un statec
+                               putStrLn $ "reply C:" ++ show (times3 x) 
                                if x /= failVal then return $ times3 x else return failVal 
     rc <-  (locc, repc) ~> client
 
-    let replies =  locOut [rl,ra,rb,rc] -- [x @ loc] --> [x] @ loc
+    --let replies =  locOut [rl,ra,rb,rc] -- [x @ loc] --> [x] @ loc
     replies <- client `locally` \un -> do 
-        answer <- selecT $ compare_ (un replies) 2
+        let replies = [un rl, un ra, un rb, un rc]
+        answer <- selecT $ compare_ replies 3
         finalans <- wait answer
         putStrLn $ "result at client:" ++ show finalans
     return ()
     
-
 
 pBFTMain :: HttpConfig -> IO ()
 pBFTMain cfg = do
