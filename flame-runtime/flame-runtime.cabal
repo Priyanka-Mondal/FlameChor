@@ -119,7 +119,27 @@ executable avail
         , freer-simple
         , HasChor
         , flame-runtime
-      
+
+executable mq
+    hs-source-dirs:   playground/majorityQuorum
+    main-is:          Main.hs
+    default-language: GHC2021
+    build-depends:
+        , flame-plugin
+        , constraints
+        , reflection
+        , containers
+        , mtl
+        , text
+        , base    >= 4.16 && < 4.20
+        , time    >= 1.11 && < 1.13
+        , async >= 2.2  && < 2.3
+        , freer-simple
+        , HasChor
+        , flame-runtime
+
+
+
 executable pbft
     hs-source-dirs:   playground/pBFT
     main-is:          Main.hs

@@ -88,35 +88,6 @@ availLarBal = do
 
   return largestAvailBal
 
-majorityQuorum :: Choreo IO (Async Int @ "client")
-majorityQuorum = do 
-  a <- locA `locally` \_ -> do
-      putStrLn "Enter value at A::"
-      readLn :: IO Int
-
-  b <- locB `locally` \_ -> do
-      putStrLn "Enter value at B::"
-      readLn :: IO Int
-
-  c <- locC `locally` \_ -> do
-      putStrLn "Enter value at C::"
-      readLn :: IO Int
-
-  a' <- (locA, a) ~> client
-  b' <- (locB, b) ~> client
-  c' <- (locC, c) ~> client
-
-  ab <- client `locally` \un -> do compare (un a') (un b')
-  bc <- client `locally` \un -> do compare (un b') (un c')
-  ca <- client `locally` \un -> do compare (un c') (un a')
-
-  bcca <- client `locally` \un -> do select (un bc) (un ca)
-  abc <- client `locally` \un -> do select (un ab) (un bcca)
-    
-  client `locally` \un -> do
-    q <- wait (un abc)
-    putStrLn (show q) 
-  return abc
 
 
 threeByFiveQuorum :: Choreo IO (Async Int @ "client")
@@ -178,18 +149,5 @@ threeByFiveQuorumMain = do
                        , ("client", ("localhost", 4447))
                        ]
 
-majorityQuorumMain :: IO ()
-majorityQuorumMain = do
-  [loc] <- getArgs
-  void $ runChoreography cfg majorityQuorum loc
-  where
-    cfg = mkHttpConfig [ ("A", ("localhost", 4242))
-                       , ("B", ("localhost", 4343))
-                       , ("C", ("localhost", 4544))
-                       , ("client", ("localhost", 4445))
-                       ]
-----------------------------------------------------------------------
--- Entry point
---main = test3
 --main = threeByFiveQuorumMain
 main = availableLargestBalance

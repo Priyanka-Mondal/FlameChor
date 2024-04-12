@@ -15,5 +15,8 @@ cradle:
     - path: "playground/pBFT/Main.hs"
       component: "flame-runtime:exe:pbft"
 
+    - path: "playground/majorityQuorum/Main.hs"
+      component: "flame-runtime:exe:mq"
+
     - path: "playground/bookseller-2/Main.hs"
       component: "flame-runtime:exe:bookseller-2"
