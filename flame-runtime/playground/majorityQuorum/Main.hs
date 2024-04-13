@@ -35,7 +35,6 @@ client :: Proxy "client"
 client = Proxy 
 
 
-
 majorityQuorum :: Choreo IO (Async Int @ "client")
 majorityQuorum = do 
  
@@ -53,33 +52,42 @@ majorityQuorum = do
       putStrLn "Enter value at C::"
       readLn :: IO Int
 
-  a' <- (locA, a) ~> locB
-  b' <- (locB, b) ~> locA
+  a' <- (locA, a) ~> client
+  b' <- (locB, b) ~> client
   c' <- (locC, c) ~> client
+  
+
+  abc <- client `locally` \un -> do 
+    selecT $ compare_ [un c', un c', un c'] 2
+
+  m <- client `locally` \un -> do
+    q <- wait (un abc)
+    print q
+    return q
+
+  ma <- (client,m) ~> locA
+  mb <- (client, m) ~> locB
+  mc <- (client, m) ~> locC
+
+  locA `locally` \un -> do
+    q <- wait (un ma)
+    print q
 
   locB `locally` \un -> do
-   a <- wait $ un a'
-  -- b <- wait $ un b'
-  -- c <- wait $ un c' 
-   putStrLn $ ": "++ show a -- ++ " /" ++ show b ++ "/ " ++ show c
+    q <- wait (un mb)
+    print q
 
+  locC `locally` \un -> do
+    q <- wait (un mc)
+    print q
 
-  client `locally` \_ -> do putStrLn "waiting client$"
-
-  abc <- client `locally` \un -> do selecT $ compare_ [un b', un b', un c'] 1
   --bc <- client `locally` \un -> do compare (un b') (un c')
   --ca <- client `locally` \un -> do compare (un c') (un a')
- 
-  client `locally` \_ -> do putStrLn "compared client$"
-
   --bcca <- client `locally` \un -> do select (un bc) (un ca)
   --abc <- client `locally` \un -> do select (un ab) (un bcca)
-    
-  client `locally` \_ -> do putStrLn "selected client$"
-  
-  client `locally` \un -> do
-    q <- wait (un abc)
-    putStrLn $ show q
+  client `locally` \_ -> do 
+      putStrLn "consensus done"
+      getLine
   return abc
 
 
@@ -88,8 +96,8 @@ majorityQuorumMain = do
   [loc] <- getArgs
   void $ runChoreography cfg majorityQuorum loc
   where
-    cfg = mkHttpConfig [ ("A", ("localhost", 4242))
-                       , ("B", ("localhost", 4343))
+    cfg = mkHttpConfig [ ("A", ("localhost", 4240))
+                       , ("B", ("localhost", 4341))
                        , ("C", ("localhost", 4544))
                        , ("client", ("localhost", 4445))
                        ]

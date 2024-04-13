@@ -23,13 +23,25 @@ library
                     Flame.Runtime.IO,
                     Flame.Runtime.Sealed,
                     Flame.Runtime.IFCRef, 
-                    Flame.Runtime.Prelude
-                    Flame.Runtime.Crypto
-                    Flame.Runtime.Crypto.KeyMap
-                    Flame.Runtime.Crypto.KeyedPrincipal
-                    Flame.Runtime.Crypto.Util
-                    Flame.Do
-                    Flame.Core
+                    Flame.Runtime.Prelude,
+                    Flame.Runtime.Crypto,
+                    Flame.Runtime.Crypto.KeyMap,
+                    Flame.Runtime.Crypto.KeyedPrincipal,
+                    Flame.Runtime.Crypto.Util,
+                    Flame.Do,
+                    Flame.Core,
+                    Flame.TCB.Freer.ChoreoLabelled,
+                    MyHasChor.Choreography,
+                    MyHasChor.Choreography.Choreo,
+                    MyHasChor.Choreography.ChoreoAsync,
+                    MyHasChor.Choreography.Flaqr,
+                    MyHasChor.Choreography.Location,
+                    MyHasChor.Choreography.Network,
+                    MyHasChor.Choreography.Network.Http,
+                    MyHasChor.Choreography.Network.Local,
+                    MyHasChor.Choreography.NetworkAsync,
+                    MyHasChor.Choreography.NetworkAsync.Http
+                    --Control.Monad.Freer
 
   -- other-modules:       
   other-extensions: DataKinds, LambdaCase, AllowAmbiguousTypes, PackageImports,
@@ -63,6 +75,18 @@ library
                     random >= 1.2.1.1,
                     array >= 0.5.4.0,
                     unordered-containers >= 0.2.19.1,
+                    timeout
+        , async                >= 2.2  && < 2.3
+        , base                 >= 4.16 && < 4.20
+        , bytestring           >= 0.11 && < 0.13
+        , http-client          >= 0.7  && < 0.8
+        , mtl                  >= 2.2  && < 2.4
+        , servant              >= 0.19 && < 0.21
+        , servant-client       >= 0.19 && < 0.21
+        , servant-server       >= 0.19 && < 0.21
+        , template-haskell     >= 2.18 && < 2.22
+        , unordered-containers >= 0.2  && < 0.3
+        , warp                 >= 3.3  && < 3.4
                     
                    
 
@@ -84,100 +108,100 @@ executable bookseller-1-simple
         , HasChor
         , flame-runtime
 
-executable async
-    hs-source-dirs:   playground/async
-    main-is:          Main.hs
-    default-language: GHC2021
-    build-depends:
-        , flame-plugin
-        , constraints
-        , reflection
-        , containers
-        , mtl
-        , text
-        , base    >= 4.16 && < 4.20
-        , time    >= 1.11 && < 1.13
-        , async >= 2.2  && < 2.3
-        , freer-simple
-        , HasChor
-        , flame-runtime
+--{ executable async
+    -- hs-source-dirs:   playground/async
+    -- main-is:          Main.hs
+    -- default-language: GHC2021 
+    -- build-depends:
+--         , flame-plugin
+--         , constraints
+--         , reflection
+--         , containers
+--         , mtl
+--         , text
+--         , base    >= 4.16 && < 4.20
+--         , time    >= 1.11 && < 1.13
+--         , async >= 2.2  && < 2.3
+--         , freer-simple
+--         , HasChor
+--         , flame-runtime
 
-executable avail
-    hs-source-dirs:   playground/availableLargestBal
-    main-is:          Main.hs
-    default-language: GHC2021
-    build-depends:
-        , flame-plugin
-        , constraints
-        , reflection
-        , containers
-        , mtl
-        , text
-        , base    >= 4.16 && < 4.20
-        , time    >= 1.11 && < 1.13
-        , async >= 2.2  && < 2.3
-        , freer-simple
-        , HasChor
-        , flame-runtime
+-- executable avail
+--     hs-source-dirs:   playground/availableLargestBal
+--     main-is:          Main.hs
+--     default-language: GHC2021
+--     build-depends:
+--         , flame-plugin
+--         , constraints
+--         , reflection
+--         , containers
+--         , mtl
+--         , text
+--         , base    >= 4.16 && < 4.20
+--         , time    >= 1.11 && < 1.13
+--         , async >= 2.2  && < 2.3
+--         , freer-simple
+--         , HasChor
+--         , flame-runtime
 
-executable mq
-    hs-source-dirs:   playground/majorityQuorum
-    main-is:          Main.hs
-    default-language: GHC2021
-    build-depends:
-        , flame-plugin
-        , constraints
-        , reflection
-        , containers
-        , mtl
-        , text
-        , base    >= 4.16 && < 4.20
-        , time    >= 1.11 && < 1.13
-        , async >= 2.2  && < 2.3
-        , freer-simple
-        , HasChor
-        , flame-runtime
+-- executable mq
+--     hs-source-dirs:   playground/majorityQuorum
+--     main-is:          Main.hs
+--     default-language: GHC2021
+--     build-depends:
+--         , flame-plugin
+--         , constraints
+--         , reflection
+--         , containers
+--         , mtl
+--         , text
+--         , base    >= 4.16 && < 4.20
+--         , time    >= 1.11 && < 1.13
+--         , async >= 2.2  && < 2.3
+--         , freer-simple
+--         , HasChor
+--         , flame-runtime
 
 
 
-executable pbft
-    hs-source-dirs:   playground/pBFT
-    main-is:          Main.hs
-    default-language: GHC2021
-    build-depends:
-        , flame-plugin
-        , constraints
-        , reflection
-        , containers
-        , mtl
-        , text
-        , base    >= 4.16 && < 4.20
-        , time    >= 1.11 && < 1.13
-        , async >= 2.2  && < 2.3
-        , freer-simple
-        , HasChor
-        , flame-runtime
-        , random >= 1.2.1.1
-        , array >=0.5.4.0
-        , unordered-containers >= 0.2.19.1
+-- executable pbft
+--     hs-source-dirs:   playground/pBFT
+--     main-is:          Main.hs
+--     default-language: GHC2021
+--     build-depends:
+--         , flame-plugin
+--         , constraints
+--         , reflection
+--         , containers
+--         , mtl
+--         , text
+--         , base    >= 4.16 && < 4.20
+--         , time    >= 1.11 && < 1.13
+--         , async >= 2.2  && < 2.3
+--         , freer-simple
+--         , HasChor
+--         , flame-runtime
+--         , random >= 1.2.1.1
+--         , array >=0.5.4.0
+--         , unordered-containers >= 0.2.19.1
       
-executable bookseller-2
-    hs-source-dirs:   playground/bookseller-2
-    main-is:          Main.hs
-    default-language: GHC2021
-    build-depends:
-        , flame-plugin
-        , constraints
-        , reflection
-        , containers
-        , mtl
-        , text
-        , base    >= 4.16 && < 4.20
-        , time    >= 1.11 && < 1.13
-        , async >= 2.2  && < 2.3
-        , freer-simple
-        , HasChor
-        , flame-runtime
+-- executable bookseller-2
+--     hs-source-dirs:   playground/bookseller-2
+--     main-is:          Main.hs
+--     default-language: GHC2021
+--     build-depends:
+--         , flame-plugin
+--         , constraints
+--         , reflection
+--         , containers
+--         , mtl
+--         , text
+--         , base    >= 4.16 && < 4.20
+--         , time    >= 1.11 && < 1.13
+--         , async >= 2.2  && < 2.3
+--         , freer-simple
+--         , HasChor
+--         , flame-runtime
 
 --  hs-source-dirs:      src
  -- default-language:    Haskell2010

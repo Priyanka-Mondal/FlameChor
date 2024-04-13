@@ -31,8 +31,6 @@ module Flame.TCB.Freer.IFC where
 import Flame.Principals
 import "HasChor" Control.Monad.Freer
     ( interpFreer, toFreer, Freer )
-import "HasChor" Control.Monad.Freer
-    ( interpFreer, toFreer, Freer )
 import Data.Type.Bool
 import Data.Proxy (Proxy(..))
 import Data.Kind (Type)
@@ -50,7 +48,7 @@ import Control.Monad.Identity
 -- instance (Member (Labeled pc) r) => LabeledMember pc r where
 data (l::KPrin) ! a  where
   Seal :: { unseal :: a }  -> l!a
-  deriving (Show, Read) -- these instances should be explicitly
+ -- deriving (Show, Read) -- these instances should be explicitly
                         -- most likely, they should encrypt and decrypt
 
 type Clearance pc = forall a l. (l ⊑ pc) => l!a -> a
@@ -109,6 +107,8 @@ runLabeled = interpFreer handler
     handler (Restrict pc ma) = ma unseal <&> Seal
     handler (Protect a) = pure (Seal a)
     handler (Use (Seal b) k)  = runLabeled $ k b
+
+
 
 -- chooseSecret :: (l ⊑ pc, l' ⊑ pc) => 
 --     SPrin pc -> SPrin l -> SPrin l' -> l!Bool -> l'!Int -> l'!Int -> Labeled IO pc (pc!())

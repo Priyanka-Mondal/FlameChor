@@ -9,32 +9,27 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# OPTIONS_GHC -fplugin Flame.Solver #-}
 
 module Main where
 
-import Choreography
-import Choreography.Location
-import Choreography.Choreo
+
+import MyHasChor.Choreography
+import MyHasChor.Choreography.Choreo
 import Control.Concurrent.Async
-import System.Environment
-import Data.Proxy
 import Control.Monad.Identity (Identity(..), runIdentity, void)
-import "freer-simple" Control.Monad.Freer as S
-import "HasChor" Control.Monad.Freer (interpFreer, toFreer)
-
-import Choreography.Location
-
+import MyHasChor.Choreography.Location
 import Data.Proxy
 import Data.Time
 import System.Environment
-import GHC.TypeLits
-import Control.Monad.Identity (Identity(..), runIdentity)
+--import Control.Monad.Identity (Identity(..), runIdentity)
 import "freer-simple" Control.Monad.Freer as S
 import "HasChor" Control.Monad.Freer (interpFreer, toFreer)
 import Flame.Principals
 import Flame.TCB.Freer.IFC
 import Flame.Assert
+import GHC.TypeLits (KnownSymbol)
 
 type Buyer = N "buyer"
 buyer :: SPrin Buyer
@@ -65,7 +60,7 @@ fromSeller = bs
 -- fromSeller :: SPrin FromSeller
 -- fromSeller = (((buyer *\/ seller)*->) */\ (seller*<-))
 
-labelIn :: l!(a @ loc) -> (l!a) @ loc
+labelIn :: l ! (a @ loc) -> (l!a) @ loc
 labelIn lal = wrap $ bind lal (label . unwrap)
 
 labelIn' :: Monad m => Labeled m pc (l!(a @ loc)) -> Labeled m pc ((l!a) @ loc)
@@ -76,8 +71,10 @@ wrapLabeled :: forall pc m a loc. Monad m => Labeled m pc a -> Labeled m pc (a @
 wrapLabeled = Prelude.fmap wrap --- ???
 
 labelOut :: (l!a) @ loc -> l!(a @ loc) 
-labelOut lal = bind (unwrap lal) (label . wrap) -- require a locally ?? 
--- new unwrap version that labels and wrap Empty 
+labelOut lal = bind (unwrap lal) (label . wrap) 
+
+-- requires a locally ?? 
+-- new unwrap version that labels and wraps Empty 
 
 labelOut' :: (Monad m, l ⊑ l'', l' ⊑ l'') => Labeled m pc ((l!a) @ loc) -> Labeled m pc (l!(a @ loc))
 labelOut' e = e >>= (\lal -> use (unwrap lal) (protect . wrap))
@@ -99,10 +96,10 @@ joinOut llal = bind llal (\lal -> bind (unwrap lal) $ label . wrap)
 slocally :: forall pc loc_pc l loc m a. (Monad m, KnownSymbol loc, pc ⊑ loc_pc, pc ⊑ l)
                => (SPrin pc, SPrin (N loc), SPrin loc_pc, SPrin l)
                -> (Unwrap loc -> Labeled m loc_pc (l!a))
-               -> Labeled (Choreo m) pc ((l!a) @ loc)
+               -> Labeled (Choreo m) pc ((l!a) @ loc) -- type changes
 slocally (pc, loc, loc_pc, l) k = do
   result <- restrict pc (\_ -> locally (sym loc) $ (\un -> runLabeled $ k un))
-  return $ labelIn (joinOut result)
+  return $ labelIn (joinOut result) --labelIn
 
 
 (~>:) :: (Show a, Read a, KnownSymbol loc, KnownSymbol loc') --, (N loc') ≽ (C pc), (N loc) ≽ (I pc))
@@ -169,13 +166,13 @@ bookseller = do
         use @_ @_ @_ @BS (join (un title')) (\t -> protect $ deliveryDateOf t))
       deliveryDate' <- (sym seller, bs, fromSeller, deliveryDate) ~>: sym buyer
  
-      labelOut' ((bs, buyer, bs, fromBuyer) `slocally` (\un -> do
+      labelOut'((bs, buyer, bs, fromBuyer) `slocally` (\un -> do --labelOut'
         use (join (un deliveryDate')) 
           (\dd -> do
             safePutStrLn $ label ("The book will be delivered on " ++ show dd)
             protect $ Just dd)))
  
-    False -> labelOut' ((bs, buyer, bs, fromBuyer) `slocally` (\un -> do
+    False -> labelOut'((bs, buyer, bs, fromBuyer) `slocally` (\un -> do --labelOut'
         safePutStrLn $ label "The book's price is out of the budget"
         protect Nothing))
         )))

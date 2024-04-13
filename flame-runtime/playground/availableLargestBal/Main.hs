@@ -79,11 +79,11 @@ availLarBal = do
                               putStrLn $ "less than 101 b1:" ++ (show a')
            b2 `locally` \_ -> do 
                               a' <- wait a
-                              putStrLn $ "less than 101 b1:" ++ (show a')
+                              putStrLn $ "less than 101 b2:" ++ (show a')
            client `locally` \_ -> do 
                                 a' <- wait a
                                 putStrLn $ "less than 101 b1:" ++ (show a') 
-
+                                getLine 
    
 
   return largestAvailBal
