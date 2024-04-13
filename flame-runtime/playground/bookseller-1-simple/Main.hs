@@ -39,12 +39,13 @@ type Seller = N "seller"
 seller :: SPrin Seller
 seller = SName (Proxy :: Proxy "seller")
 
-type BS = (Buyer \/ Seller)
+type BS = (Buyer \/ Seller) 
+   --deriving (Show)
 
 bs :: SPrin BS
 bs = buyer *\/ seller
 
-type FromBuyer = BS
+type FromBuyer = BS 
 fromBuyer :: SPrin BS
 fromBuyer = bs
 
@@ -114,7 +115,7 @@ slocally (pc, loc, loc_pc, l) k = do
   return $ labelIn result
 
 -- | Conditionally execute choreographies based on a located value.
-sCond ::  forall pc l loc m a b. (Show a, Read a, KnownSymbol loc, pc ⊑ l)
+sCond ::  forall pc l loc m a b. (Show a, Read a, KnownSymbol loc, pc ⊑ l, Show (l!a), Read (l!a))
      => (Proxy loc, SPrin pc, a @ loc) -- ^ A pair of a location and a scrutinee located on
                                          -- it.
      -> (a -> Labeled (Choreo m) pc b) -- ^ A function that describes the follow-up
@@ -160,7 +161,7 @@ bookseller = do
     use @_ @_ @_ @BS (join @_ @_ @BS (un price')) (\p -> protect (p < budget)))
  
   -- if the buyer decides to buy the book, the seller sends the delivery date to the buyer
-  labelIn' (sCond (sym buyer, bs, decision) $ (\d -> labelIn' $ use d (\case
+  labelIn' (sCond (sym buyer, bs, decision) (\d -> labelIn' $ use d (\case
     True  -> do
       deliveryDate  <- (bs, seller, bs, fromSeller) `slocally` (\un -> do
         use @_ @_ @_ @BS (join (un title')) (\t -> protect $ deliveryDateOf t))
@@ -177,31 +178,6 @@ bookseller = do
         protect Nothing))
         )))
 
-{- 
----- `bookseller'` is a simplified version of `bookseller` that utilizes `~~>`
---bookseller' :: Choreo IO (Maybe Day @ "buyer")
---bookseller' = do
---  title <- (buyer, \_ -> do
---               putStrLn "Enter the title of the book to buy"
---               getLine
---           )
---           ~~> seller
---
---  price <- (sym seller, \un -> return $ priceOf (un title)) ~~> (sym buyer)
---
---  cond' (sym buyer, \un -> return $ (un price) < budget) \case
---    True  -> do
---      deliveryDate <- (sym seller, \un -> return $ deliveryDateOf (un title)) ~~> (sym buyer)
---
---      (sym buyer) `locally` \un -> do
---        putStrLn $ "The book will be delivered on " ++ show (un deliveryDate)
---        return $ Just (un deliveryDate)
---
---    False -> do
---      (sym buyer) `locally` \_ -> do
---        putStrLn "The book's price is out of the budget"
---        return Nothing
--}
 
 budget :: Int
 budget = 100
