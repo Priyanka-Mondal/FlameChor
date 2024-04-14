@@ -1,3 +1,4 @@
+-- {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DataKinds      #-}
 {-# LANGUAGE LambdaCase     #-}
@@ -9,17 +10,18 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE InstanceSigs #-}
+--{-# LANGUAGE InstanceSigs #-}
 {-# OPTIONS_GHC -fplugin Flame.Solver #-}
+
 
 module Main where
 
 
-import MyHasChor.Choreography
-import MyHasChor.Choreography.Choreo
+import Choreography
+import Choreography.Choreo
 import Control.Concurrent.Async
 import Control.Monad.Identity (Identity(..), runIdentity, void)
-import MyHasChor.Choreography.Location
+import Choreography.Location
 import Data.Proxy
 import Data.Time
 import System.Environment
@@ -64,7 +66,7 @@ fromSeller = bs
 labelIn :: l ! (a @ loc) -> (l!a) @ loc
 labelIn lal = wrap $ bind lal (label . unwrap)
 
-labelIn' :: Monad m => Labeled m pc (l!(a @ loc)) -> Labeled m pc ((l!a) @ loc)
+labelIn' :: (Monad m) => Labeled m pc (l!(a @ loc)) -> Labeled m pc ((l!a) @ loc)
 labelIn' e = e >>= (\lal -> wrap <$> use lal (protect . unwrap))
 
 -- | Interpret the effects in a freer monad in terms of another monad.
@@ -80,11 +82,11 @@ labelOut lal = bind (unwrap lal) (label . wrap)
 labelOut' :: (Monad m, l ⊑ l'', l' ⊑ l'') => Labeled m pc ((l!a) @ loc) -> Labeled m pc (l!(a @ loc))
 labelOut' e = e >>= (\lal -> use (unwrap lal) (protect . wrap))
 
-joinIn :: forall l l' l'' a loc. (l ⊑ l'', l' ⊑ l'') => l!((l'!a) @ loc) -> (l''!a) @ loc
+joinIn :: forall l l' l'' a loc. (Show a, Read a, l ⊑ l'', l' ⊑ l'') => l!((l'!a) @ loc) -> (l''!a) @ loc
 joinIn = wrap . join . unwrap . labelIn
 
 joinIn' :: forall l l' l'' pc m a loc. 
-  (Monad m, l ⊑ l'', l' ⊑ l'') => Labeled m pc (l!((l'!a) @ loc)) -> Labeled m pc ((l''!a) @ loc)
+  (Monad m, l ⊑ l'', l' ⊑ l'', Show a, Read a) => Labeled m pc (l!((l'!a) @ loc)) -> Labeled m pc ((l''!a) @ loc)
 joinIn' lx = wrap <$> do 
   x <- lx 
   let x' = joinIn @l @l' @l'' x -- why didn't this get inferred?
@@ -94,7 +96,7 @@ joinOut :: forall l l' l'' a loc. (l ⊑ l'', l' ⊑ l'') => l!((l'!a) @ loc) ->
 joinOut llal = bind llal (\lal -> bind (unwrap lal) $ label . wrap)
 
 -- | Perform a local computation at a given location.
-slocally :: forall pc loc_pc l loc m a. (Monad m, KnownSymbol loc, pc ⊑ loc_pc, pc ⊑ l)
+slocally :: forall pc loc_pc l loc m a. (Monad m, KnownSymbol loc, pc ⊑ loc_pc, pc ⊑ l,  Show a, Read a)
                => (SPrin pc, SPrin (N loc), SPrin loc_pc, SPrin l)
                -> (Unwrap loc -> Labeled m loc_pc (l!a))
                -> Labeled (Choreo m) pc ((l!a) @ loc) -- type changes
@@ -103,25 +105,25 @@ slocally (pc, loc, loc_pc, l) k = do
   return $ labelIn (joinOut result) --labelIn
 
 
-(~>:) :: (Show a, Read a, KnownSymbol loc, KnownSymbol loc') --, (N loc') ≽ (C pc), (N loc) ≽ (I pc))
+(~>:) :: forall a loc loc' pc l m. (Show a, Read a, KnownSymbol loc, KnownSymbol loc')--, Show (l!a), Read (l!a)) --, (N loc') ≽ (C pc), (N loc) ≽ (I pc))
      => (Proxy loc, SPrin pc, SPrin l, (l!a) @ loc)  
                                 -- a sender's location, 
-                                --a clearance, 
+                                -- a clearance, 
                                 -- and a value located at the sender
      -> Proxy loc'-- ^ A receiver's location.
      -> Labeled (Choreo m) pc ((pc!(l!a)) @ loc')
 (~>:) (loc, pc, l, la) loc' = do
-  result <- restrict pc (\_ -> ((loc, la) ~> loc'))
+  result <- restrict pc ( \_ -> (loc, la) ~> loc')
   return $ labelIn result
 
 -- | Conditionally execute choreographies based on a located value.
-sCond ::  forall pc l loc m a b. (Show a, Read a, KnownSymbol loc, pc ⊑ l, Show (l!a), Read (l!a))
+sCond ::  forall pc l loc m a b. (Show a, Read a, KnownSymbol loc, pc ⊑ l)
      => (Proxy loc, SPrin pc, a @ loc) -- ^ A pair of a location and a scrutinee located on
                                          -- it.
      -> (a -> Labeled (Choreo m) pc b) -- ^ A function that describes the follow-up
                           -- choreographies based on the value of scrutinee.
      -> Labeled (Choreo m) pc (l!b)
-sCond (l, pc, la) c = restrict pc $ \_ -> cond (l, la) (\la -> runLabeled $ c la)
+sCond (l, pc, la) c = restrict pc $ \_ -> cond (l, la) (runLabeled . c)--(\la -> runLabeled $ c la)
 
 
 sPutStrLn  :: Show a => SPrin pc -> (l ⊑ pc) => l!a -> Labeled IO pc (pc!())

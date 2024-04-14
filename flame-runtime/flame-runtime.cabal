@@ -31,17 +31,17 @@ library
                     Flame.Do,
                     Flame.Core,
                     Flame.TCB.Freer.ChoreoLabelled,
-                    MyHasChor.Choreography,
-                    MyHasChor.Choreography.Choreo,
-                    MyHasChor.Choreography.ChoreoAsync,
-                    MyHasChor.Choreography.Flaqr,
-                    MyHasChor.Choreography.Location,
-                    MyHasChor.Choreography.Network,
-                    MyHasChor.Choreography.Network.Http,
-                    MyHasChor.Choreography.Network.Local,
-                    MyHasChor.Choreography.NetworkAsync,
-                    MyHasChor.Choreography.NetworkAsync.Http
-                    --Control.Monad.Freer
+                    -- MyHasChor.Choreography,
+                    -- MyHasChor.Choreography.Choreo,
+                    -- MyHasChor.Choreography.ChoreoAsync,
+                    -- MyHasChor.Choreography.Flaqr,
+                    -- MyHasChor.Choreography.Location,
+                    -- MyHasChor.Choreography.Network,
+                    -- MyHasChor.Choreography.Network.Http,
+                    -- MyHasChor.Choreography.Network.Local,
+                    -- MyHasChor.Choreography.NetworkAsync,
+                    -- MyHasChor.Choreography.NetworkAsync.Http
+                    Control.Monad.Freer
 
   -- other-modules:       
   other-extensions: DataKinds, LambdaCase, AllowAmbiguousTypes, PackageImports,
@@ -90,24 +90,24 @@ library
                     
                    
 
---{executable bookseller-1-simple
---     hs-source-dirs:   playground/bookseller-1-simple
---     main-is:          Main.hs
---     default-language: GHC2021
---     build-depends:
---         , flame-plugin
---         , constraints
---         , reflection
---         , containers
---         , mtl
---         , text
---         , base    >= 4.16 && < 4.20
---         , time    >= 1.11 && < 1.13
---         , async >= 2.2  && < 2.3
---         , freer-simple
---         , HasChor
---         , flame-runtime
--- --}
+executable bookseller-1-simple
+    hs-source-dirs:   playground/bookseller-1-simple
+    main-is:          Main.hs
+    default-language: GHC2021
+    build-depends:
+        , flame-plugin
+        , constraints
+        , reflection
+        , containers
+        , mtl
+        , text
+        , base    >= 4.16 && < 4.20
+        , time    >= 1.11 && < 1.13
+        , async >= 2.2  && < 2.3
+        , freer-simple
+        , HasChor
+        , flame-runtime
+
 --{ executable async
     -- hs-source-dirs:   playground/async
     -- main-is:          Main.hs
@@ -144,23 +144,23 @@ library
 --         , HasChor
 --         , flame-runtime
 
-executable mq
-    hs-source-dirs:   playground/majorityQuorum
-    main-is:          Main.hs
-    default-language: GHC2021
-    build-depends:
-        , flame-plugin
-        , constraints
-        , reflection
-        , containers
-        , mtl
-        , text
-        , base    >= 4.16 && < 4.20
-        , time    >= 1.11 && < 1.13
-        , async >= 2.2  && < 2.3
-        , freer-simple
-        , HasChor
-        , flame-runtime
+-- executable mq
+--     hs-source-dirs:   playground/majorityQuorum
+--     main-is:          Main.hs
+--     default-language: GHC2021
+--     build-depends:
+--         , flame-plugin
+--         , constraints
+--         , reflection
+--         , containers
+--         , mtl
+--         , text
+--         , base    >= 4.16 && < 4.20
+--         , time    >= 1.11 && < 1.13
+--         , async >= 2.2  && < 2.3
+--         , freer-simple
+--         , HasChor
+--         , flame-runtime
 
 
 
