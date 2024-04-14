@@ -1,0 +1,52 @@
+cradle:
+  cabal:
+    - path: "src"
+      component: "lib:HasChor"
+
+    - path: "examples/async/Main.hs"
+      component: "HasChor:exe:async"
+
+    - path: "examples/bank-2pc/Main.hs"
+      component: "HasChor:exe:bank-2pc"
+
+    - path: "examples/bookseller-0-network/Main.hs"
+      component: "HasChor:exe:bookseller-0-network"
+
+    - path: "examples/bookseller-1-simple/Main.hs"
+      component: "HasChor:exe:bookseller-1-simple"
+
+    - path: "examples/bookseller-2-higher-order/Main.hs"
+      component: "HasChor:exe:bookseller-2-higher-order"
+
+    - path: "examples/bookseller-3-loc-poly/Main.hs"
+      component: "HasChor:exe:bookseller-3-loc-poly"
+
+    - path: "examples/diffiehellman/Main.hs"
+      component: "HasChor:exe:diffiehellman"
+
+    - path: "examples/karatsuba/Main.hs"
+      component: "HasChor:exe:karatsuba"
+
+    - path: "examples/kvs-1-simple/Main.hs"
+      component: "HasChor:exe:kvs1"
+
+    - path: "examples/kvs-2-primary-backup/Main.hs"
+      component: "HasChor:exe:kvs2"
+
+    - path: "examples/kvs-3-higher-order/Main.hs"
+      component: "HasChor:exe:kvs3"
+
+    - path: "examples/kvs-4-loc-poly/Main.hs"
+      component: "HasChor:exe:kvs4"
+
+    - path: "examples/mergesort/Main.hs"
+      component: "HasChor:exe:mergesort"
+
+    - path: "examples/quicksort/Main.hs"
+      component: "HasChor:exe:quicksort"
+
+    - path: "examples/ring-leader/Main.hs"
+      component: "HasChor:exe:ring-leader"
+
+    - path: "examples/playground/Main.hs"
+      component: "HasChor:exe:playground"

@@ -31,16 +31,16 @@ library
                     Flame.Do,
                     Flame.Core,
                     Flame.TCB.Freer.ChoreoLabelled,
-                    -- MyHasChor.Choreography,
-                    -- MyHasChor.Choreography.Choreo,
-                    -- MyHasChor.Choreography.ChoreoAsync,
-                    -- MyHasChor.Choreography.Flaqr,
-                    -- MyHasChor.Choreography.Location,
-                    -- MyHasChor.Choreography.Network,
-                    -- MyHasChor.Choreography.Network.Http,
-                    -- MyHasChor.Choreography.Network.Local,
-                    -- MyHasChor.Choreography.NetworkAsync,
-                    -- MyHasChor.Choreography.NetworkAsync.Http
+                    MyHasChor.Choreography,
+                    MyHasChor.Choreography.Choreo,
+                    MyHasChor.Choreography.ChoreoAsync,
+                    MyHasChor.Choreography.Flaqr,
+                    MyHasChor.Choreography.Location,
+                    MyHasChor.Choreography.Network,
+                    MyHasChor.Choreography.Network.Http,
+                    MyHasChor.Choreography.Network.Local,
+                    MyHasChor.Choreography.NetworkAsync,
+                    MyHasChor.Choreography.NetworkAsync.Http
                     Control.Monad.Freer
 
   -- other-modules:       
