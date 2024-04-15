@@ -1,6 +1,11 @@
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ImpredicativeTypes #-}
+{-# LANGUAGE PackageImports #-}
+{-# LANGUAGE TypeOperators #-}
 -- | This module defines the freer monad `Freer`, which allows manipulating
 -- effectful computations algebraically.
-module Control.Monad.Freer where
+module MyHasChor.Control.Monad.Freer where
 
 import Control.Monad ((>=>))
 

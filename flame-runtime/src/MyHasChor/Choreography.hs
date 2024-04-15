@@ -2,7 +2,7 @@
 
 -- | This module defines the interface to HasChor. The client of the library is
 -- highly recommended to only use constructs exported by this module.
-module Choreography (
+module MyHasChor.Choreography (
   -- * Locations and Located Values
   LocTm,
   LocTy,
@@ -29,14 +29,14 @@ module Choreography (
   runChoreography
   ) where
 
-import Choreography.Location
-import Choreography.Choreo
-import Choreography.Network
-import Choreography.Network.Http
-import Choreography.Network.Local
+import MyHasChor.Choreography.Location
+import MyHasChor.Choreography.Choreo
+import MyHasChor.Choreography.Network
+import MyHasChor.Choreography.Network.Http
+import MyHasChor.Choreography.Network.Local
 import Control.Monad.IO.Class
 import Data.Proxy
-import Choreography.Flaqr
+import MyHasChor.Choreography.Flaqr
 
 -- | Run a choreography with a message transport backend.
 runChoreography :: (Backend config, MonadIO m) => config -> Choreo m a -> LocTm -> m a

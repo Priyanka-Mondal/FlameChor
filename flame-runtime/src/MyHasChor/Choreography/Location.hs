@@ -1,7 +1,11 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE  RankNTypes #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE  KindSignatures #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 -- | This module defines locations and located values.
-module Choreography.Location where
+module MyHasChor.Choreography.Location where
 
 import Data.Proxy
 import Data.String

@@ -5,11 +5,11 @@
 -- provide a `runNetwork` function that supports multiple message
 -- transport backends.
 
-module Choreography.NetworkAsync where
+module MyHasChor.Choreography.NetworkAsync where
 
-import Choreography.Location (LocTm)
+import MyHasChor.Choreography.Location (LocTm)
 import Control.Concurrent.Async (Async)
-import Control.Monad.Freer (Freer, toFreer)
+import MyHasChor.Control.Monad.Freer (Freer, toFreer)
 import Control.Monad.IO.Class (MonadIO)
 
 ----------------------------------------------------------------------

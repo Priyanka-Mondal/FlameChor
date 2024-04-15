@@ -1,12 +1,14 @@
-{-# LANGUAGE GADTs              #-}
 {-# LANGUAGE ImpredicativeTypes #-}
-
+{-# LANGUAGE PackageImports #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE  RankNTypes #-}
+{-# LANGUAGE GADTs #-}
 -- | This module defines `Choreo`, the monad for writing choreographies.
 module MyHasChor.Choreography.Choreo where
 
 import MyHasChor.Choreography.Location
 import MyHasChor.Choreography.Network
-import Control.Monad.Freer
+import MyHasChor.Control.Monad.Freer
 import Data.List
 import Data.Proxy
 import GHC.TypeLits
@@ -39,10 +41,10 @@ data ChoreoSig m a where
        -> (a -> Choreo m b)
        -> ChoreoSig m b
 
-  LabelOut :: (Show a, Read a, KnownSymbol l, KnownSymbol n)
+  LabelOut :: (Show a, Read a, KnownSymbol l)
        => Proxy l
-       -> n ! (a @ l)
-       -> ChoreoSig m ((n ! a) @ l) 
+       ->  a @ l
+       -> ChoreoSig m (a @ l)
 
 -- | Monad for writing choreographies.
 type Choreo m = Freer (ChoreoSig m)
@@ -72,7 +74,16 @@ epp c l' = interpFreer handler c
     handler (Cond l a c)
       | toLocTm l == l' = broadcast (unwrap a) >> epp (c (unwrap a)) l'
       | otherwise       = recv (toLocTm l) >>= \x -> epp (c x) l'
+    handler (LabelOut l a) -- equivalent to locally
+      | toLocTm l == l' = return $ wrap (unwrap a)
+      | otherwise       = return Empty
+   -- We need value inside Labeled monad
 
+   
+            --lout $ bind (unwrap lal) (label . wrap)  --protect $ wrap <$> use $ unwrap a
+     
+-- bind (unwrap lal) (label . wrap) 
+--use (unwrap lal) (protect . wrap))
 -- * Choreo operations
 
 -- | Perform a local computation at a given location.
@@ -99,6 +110,14 @@ cond :: (Show a, Read a, KnownSymbol l)
                           -- choreographies based on the value of scrutinee.
      -> Choreo m b
 cond (l, a) c = toFreer (Cond l a c)
+
+lOut :: (Show a, Read a, KnownSymbol l)
+     => Proxy l -- ^ A pair of a location and a scrutinee located on
+                          -- it.
+     -> a @ l -- ^ A function that describes the follow-up
+                          -- choreographies based on the value of scrutinee.
+     -> Choreo m (a @ l)
+lOut l s = toFreer (LabelOut l s)
 
 -- | A variant of `~>` that sends the result of a local computation.
 (~~>) :: (Show a, Read a, KnownSymbol l, KnownSymbol l')

@@ -1,17 +1,17 @@
 {-# LANGUAGE GADTs #-}
 
 -- | This module defines the multi-thread backend for the `Network` monad.
-module Choreography.Network.Local where
+module MyHasChor.Choreography.Network.Local where
 
-import Choreography.Location
-import Choreography.Network
+import MyHasChor.Choreography.Location
+import MyHasChor.Choreography.Network
 import Control.Concurrent
 import Control.Concurrent.Chan
 import Control.Monad
-import Control.Monad.Freer
+import MyHasChor.Control.Monad.Freer
 import Control.Monad.IO.Class
 import Data.HashMap.Strict (HashMap, (!))
-import Data.HashMap.Strict qualified as HashMap
+import qualified Data.HashMap.Strict as HashMap
 
 -- | Each location is associated with a message buffer which stores messages sent
 -- from other locations.

@@ -30,7 +30,7 @@ library
                     Flame.Runtime.Crypto.Util,
                     Flame.Do,
                     Flame.Core,
-                    Flame.TCB.Freer.ChoreoLabelled,
+                    --Flame.TCB.Freer.ChoreoLabelled,
                     MyHasChor.Choreography,
                     MyHasChor.Choreography.Choreo,
                     MyHasChor.Choreography.ChoreoAsync,
@@ -40,8 +40,10 @@ library
                     MyHasChor.Choreography.Network.Http,
                     MyHasChor.Choreography.Network.Local,
                     MyHasChor.Choreography.NetworkAsync,
-                    MyHasChor.Choreography.NetworkAsync.Http
-                    Control.Monad.Freer
+                    MyHasChor.Choreography.NetworkAsync.Http,
+                    MyHasChor.Control.Monad.Freer, 
+                    MyHasChor.Choreography.Labelled
+                    --Control.Monad.Freer
 
   -- other-modules:       
   other-extensions: DataKinds, LambdaCase, AllowAmbiguousTypes, PackageImports,
@@ -71,7 +73,7 @@ library
                     haskell-src-meta,
                     haskell-src-exts,
                     freer-simple,
-                    HasChor,
+                    --HasChor,
                     random >= 1.2.1.1,
                     array >= 0.5.4.0,
                     unordered-containers >= 0.2.19.1,
@@ -87,7 +89,7 @@ library
         , template-haskell     >= 2.18 && < 2.22
         , unordered-containers >= 0.2  && < 0.3
         , warp                 >= 3.3  && < 3.4
-                    
+        , time >= 1.12.2            
                    
 
 executable bookseller-1-simple
@@ -105,8 +107,8 @@ executable bookseller-1-simple
         , time    >= 1.11 && < 1.13
         , async >= 2.2  && < 2.3
         , freer-simple
-        , HasChor
         , flame-runtime
+        --, HasChor
 
 --{ executable async
     -- hs-source-dirs:   playground/async
@@ -164,26 +166,26 @@ executable bookseller-1-simple
 
 
 
--- executable pbft
---     hs-source-dirs:   playground/pBFT
---     main-is:          Main.hs
---     default-language: GHC2021
---     build-depends:
---         , flame-plugin
---         , constraints
---         , reflection
---         , containers
---         , mtl
---         , text
---         , base    >= 4.16 && < 4.20
---         , time    >= 1.11 && < 1.13
---         , async >= 2.2  && < 2.3
---         , freer-simple
---         , HasChor
---         , flame-runtime
---         , random >= 1.2.1.1
---         , array >=0.5.4.0
---         , unordered-containers >= 0.2.19.1
+executable pbft
+    hs-source-dirs:   playground/pBFT
+    main-is:          Main.hs
+    default-language: GHC2021
+    build-depends:
+        , flame-plugin
+        , constraints
+        , reflection
+        , containers
+        , mtl
+        , text
+        , base    >= 4.16 && < 4.20
+        , time    >= 1.11 && < 1.13
+        , async >= 2.2  && < 2.3
+        , freer-simple
+        , HasChor
+        , flame-runtime
+        , random >= 1.2.1.1
+        , array >=0.5.4.0
+        , unordered-containers >= 0.2.19.1
       
 -- executable bookseller-2
 --     hs-source-dirs:   playground/bookseller-2

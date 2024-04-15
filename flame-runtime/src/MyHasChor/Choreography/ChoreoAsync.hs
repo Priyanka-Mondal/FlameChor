@@ -1,19 +1,22 @@
-{-# LANGUAGE GADTs              #-}
 {-# LANGUAGE ImpredicativeTypes #-}
-
+{-# LANGUAGE PackageImports #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE GADTs              #-}
 -- | This module defines `Choreo`, the monad for writing choreographies.
-module Choreography.ChoreoAsync where
+module MyHasChor.Choreography.ChoreoAsync where
 
 import Control.Concurrent.Async
-import Choreography.Location
-import Choreography.NetworkAsync
-import Control.Monad.Freer
+import MyHasChor.Choreography.Location
+import MyHasChor.Choreography.NetworkAsync
+import MyHasChor.Control.Monad.Freer
 import Data.List
 import Data.Proxy
 import GHC.TypeLits
 import Control.Monad.IO.Class
 import Control.Monad.State hiding (lift)
-import Control.Monad.State qualified as S
+import qualified Control.Monad.State as S
+--import "freer-simple" Control.Monad.Freer as S
+--import "HasChor" Control.Monad.Freer (interpFreer, toFreer)
 
 ----------------------------------------------------------------------
 -- * The Choreo monad

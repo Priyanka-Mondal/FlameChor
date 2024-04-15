@@ -1,16 +1,17 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs     #-}
-
+{-# LANGUAGE PackageImports #-}
+{-# LANGUAGE TypeOperators #-}
 -- | This module implments the HTTP message transport backend for the `Network`
 -- monad.
-module Choreography.Network.Http where
+module MyHasChor.Choreography.Network.Http where
 
-import Choreography.Location
-import Choreography.Network hiding (run)
+import MyHasChor.Choreography.Location
+import MyHasChor.Choreography.Network hiding (run)
 import Data.ByteString (fromStrict)
 import Data.Proxy (Proxy(..))
 import Data.HashMap.Strict (HashMap, (!))
-import Data.HashMap.Strict qualified as HashMap
+import qualified Data.HashMap.Strict as HashMap
 import Network.HTTP.Client (Manager, defaultManagerSettings, newManager)
 import Servant.API
 import Servant.Client (ClientM, client, runClientM, BaseUrl(..), mkClientEnv, Scheme(..))
@@ -18,7 +19,7 @@ import Servant.Server (Handler, Server, serve)
 import Control.Concurrent
 import Control.Concurrent.Chan
 import Control.Monad
-import Control.Monad.Freer
+import MyHasChor.Control.Monad.Freer 
 import Control.Monad.IO.Class
 import Network.Wai.Handler.Warp (run)
 

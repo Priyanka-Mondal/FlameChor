@@ -1,7 +1,14 @@
-module Choreography.Flaqr where
+{-# LANGUAGE ImpredicativeTypes #-}
+{-# LANGUAGE PackageImports #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE  RankNTypes #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
+module MyHasChor.Choreography.Flaqr where
 
-import Choreography.Location
-import Control.Monad.Freer
+import MyHasChor.Choreography.Location
+import MyHasChor.Control.Monad.Freer
 import Control.Monad.IO.Class
 import Control.Concurrent.Async
 import Prelude hiding (compare)
@@ -19,7 +26,7 @@ instance HasFail Int where
   failVal = -1
 
 instance HasFail String where
-  failVal :: String
+  --failVal :: String
   failVal = "fail"
 
 --instance HasFail NodeState where

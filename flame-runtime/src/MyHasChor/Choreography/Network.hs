@@ -4,10 +4,10 @@
 -- To run a `Network` program, we provide a `runNetwork` function that supports
 -- multiple message transport backends.
 
-module Choreography.Network where
+module MyHasChor.Choreography.Network where
 
-import Choreography.Location
-import Control.Monad.Freer
+import MyHasChor.Choreography.Location
+import MyHasChor.Control.Monad.Freer (Freer, toFreer, interpFreer)
 import Control.Monad.IO.Class
 
 -- * The Network monad
@@ -17,6 +17,7 @@ data NetworkSig m a where
   -- | Local computation.
   Run :: m a
       -> NetworkSig m a
+  --Locout :: m a -> NetworkSig m a 
   -- | Sending.
   Send ::Show a => a
        -> LocTm
@@ -38,6 +39,11 @@ type Network m = Freer (NetworkSig m)
 -- | Perform a local computation.
 run :: m a -> Network m a
 run m = toFreer $ Run m
+
+lout :: m a -> Network m a
+lout m = toFreer $ Run m
+
+--loc
 
 -- | Send a message to a receiver.
 send :: Show a => a -> LocTm -> Network m ()

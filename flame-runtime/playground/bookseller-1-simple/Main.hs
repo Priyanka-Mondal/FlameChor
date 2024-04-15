@@ -17,21 +17,34 @@
 module Main where
 
 
-import Choreography
-import Choreography.Choreo
+import MyHasChor.Choreography
+import MyHasChor.Choreography.Choreo
 import Control.Concurrent.Async
 import Control.Monad.Identity (Identity(..), runIdentity, void)
-import Choreography.Location
+import MyHasChor.Choreography.Location
 import Data.Proxy
 import Data.Time
 import System.Environment
 --import Control.Monad.Identity (Identity(..), runIdentity)
 import "freer-simple" Control.Monad.Freer as S
-import "HasChor" Control.Monad.Freer (interpFreer, toFreer)
+--import "HasChor" Control.Monad.Freer (interpFreer, toFreer)
+import MyHasChor.Control.Monad.Freer
+import MyHasChor.Choreography.Labelled
 import Flame.Principals
 import Flame.TCB.Freer.IFC
+    ( type (!),
+      Labeled,
+      bind,
+      label,
+      use,
+      protect,
+      join,
+      restrict,
+      runLabeled,
+      relabel' )
 import Flame.Assert
 import GHC.TypeLits (KnownSymbol)
+import MyHasChor.Choreography.Network.Local (LocalConfig(locToBuf))
 
 type Buyer = N "buyer"
 buyer :: SPrin Buyer
@@ -62,48 +75,12 @@ fromSeller = bs
 -- type FromSeller = ((C (Buyer \/ Seller)) /\ (I Seller))
 -- fromSeller :: SPrin FromSeller
 -- fromSeller = (((buyer *\/ seller)*->) */\ (seller*<-))
-
-labelIn :: l ! (a @ loc) -> (l!a) @ loc
-labelIn lal = wrap $ bind lal (label . unwrap)
-
-labelIn' :: (Monad m) => Labeled m pc (l!(a @ loc)) -> Labeled m pc ((l!a) @ loc)
-labelIn' e = e >>= (\lal -> wrap <$> use lal (protect . unwrap))
-
--- | Interpret the effects in a freer monad in terms of another monad.
-wrapLabeled :: forall pc m a loc. Monad m => Labeled m pc a -> Labeled m pc (a @ loc)
-wrapLabeled = Prelude.fmap wrap --- ???
-
-labelOut :: (l!a) @ loc -> l!(a @ loc) 
-labelOut lal = bind (unwrap lal) (label . wrap) 
-
--- requires a locally ?? 
--- new unwrap version that labels and wraps Empty 
-
-labelOut' :: (Monad m, l ⊑ l'', l' ⊑ l'') => Labeled m pc ((l!a) @ loc) -> Labeled m pc (l!(a @ loc))
-labelOut' e = e >>= (\lal -> use (unwrap lal) (protect . wrap))
-
-joinIn :: forall l l' l'' a loc. (Show a, Read a, l ⊑ l'', l' ⊑ l'') => l!((l'!a) @ loc) -> (l''!a) @ loc
-joinIn = wrap . join . unwrap . labelIn
-
 joinIn' :: forall l l' l'' pc m a loc. 
-  (Monad m, l ⊑ l'', l' ⊑ l'', Show a, Read a) => Labeled m pc (l!((l'!a) @ loc)) -> Labeled m pc ((l''!a) @ loc)
+  (Monad m, l ⊑ l'', l' ⊑ l'', Show a, Read a) => Labeled m pc (l ! ((l'!a) @ loc)) -> Labeled m pc ((l''!a) @ loc)
 joinIn' lx = wrap <$> do 
   x <- lx 
   let x' = joinIn @l @l' @l'' x -- why didn't this get inferred?
   use (unwrap x') protect
-
-joinOut :: forall l l' l'' a loc. (l ⊑ l'', l' ⊑ l'') => l!((l'!a) @ loc) -> l''!(a @ loc)
-joinOut llal = bind llal (\lal -> bind (unwrap lal) $ label . wrap)
-
--- | Perform a local computation at a given location.
-slocally :: forall pc loc_pc l loc m a. (Monad m, KnownSymbol loc, pc ⊑ loc_pc, pc ⊑ l,  Show a, Read a)
-               => (SPrin pc, SPrin (N loc), SPrin loc_pc, SPrin l)
-               -> (Unwrap loc -> Labeled m loc_pc (l!a))
-               -> Labeled (Choreo m) pc ((l!a) @ loc) -- type changes
-slocally (pc, loc, loc_pc, l) k = do
-  result <- restrict pc (\_ -> locally (sym loc) $ (\un -> runLabeled $ k un))
-  return $ labelIn (joinOut result) --labelIn
-
 
 (~>:) :: forall a loc loc' pc l m. (Show a, Read a, KnownSymbol loc, KnownSymbol loc')--, Show (l!a), Read (l!a)) --, (N loc') ≽ (C pc), (N loc) ≽ (I pc))
      => (Proxy loc, SPrin pc, SPrin l, (l!a) @ loc)  
@@ -122,16 +99,10 @@ sCond ::  forall pc l loc m a b. (Show a, Read a, KnownSymbol loc, pc ⊑ l)
                                          -- it.
      -> (a -> Labeled (Choreo m) pc b) -- ^ A function that describes the follow-up
                           -- choreographies based on the value of scrutinee.
-     -> Labeled (Choreo m) pc (l!b)
+     -> Labeled (Choreo m) pc (l ! b)
 sCond (l, pc, la) c = restrict pc $ \_ -> cond (l, la) (runLabeled . c)--(\la -> runLabeled $ c la)
 
-
-sPutStrLn  :: Show a => SPrin pc -> (l ⊑ pc) => l!a -> Labeled IO pc (pc!())
-sPutStrLn  pc la = restrict pc (\open -> print $ open la)
-
-sGetLine  :: SPrin pc -> Labeled IO pc (pc!String)
-sGetLine  pc = restrict pc (\_ -> getLine)
-
+------
 safePutStrLn :: forall l a. (Show a, l ⊑ BS) => l!a 
                       -> Labeled IO BS (BS!())
 safePutStrLn =  sPutStrLn  bs

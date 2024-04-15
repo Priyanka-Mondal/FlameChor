@@ -29,8 +29,9 @@
 module Flame.TCB.Freer.IFC where
 
 import Flame.Principals
-import "HasChor" Control.Monad.Freer
-    ( interpFreer, toFreer, Freer )
+--import "HasChor" Control.Monad.Freer
+--    ( interpFreer, toFreer, Freer )
+import MyHasChor.Control.Monad.Freer
 import Data.Type.Bool
 import Data.Proxy (Proxy(..))
 import Data.Kind (Type)
@@ -39,7 +40,7 @@ import Data.Constraint
 import Data.Constraint.Unsafe
 import Data.Reflection
 -- import Data.Singletons (Apply, TyFun)
-import GHC.TypeLits (TypeError, ErrorMessage(..))
+import GHC.TypeLits (TypeError, ErrorMessage(..), KnownSymbol)
 import System.IO
 import Control.Monad ((>=>))
 import Control.Monad.Identity
@@ -59,6 +60,8 @@ data LabeledSig m (pc::KPrin) a where
     Protect  :: (Monad m, pc ⊑ l) => a -> LabeledSig m pc (l!a)
     Use      :: (Monad m, l' ⊑ l, l' ⊑ pc') =>
       l'!b -> (b -> Labeled m pc' (l!a)) -> LabeledSig m pc (l!a)
+    --LocOut :: (Monad m, l' ⊑ l, l' ⊑ pc', KnownSymbol loc) => Proxy loc
+    --  (l'!a) @ loc -> LabeledSig m pc (l!(a @ loc)) [Cyclic dependency]
 
 type Labeled m pc = Freer (LabeledSig m pc)
 
