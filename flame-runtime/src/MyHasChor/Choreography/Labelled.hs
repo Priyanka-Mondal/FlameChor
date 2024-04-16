@@ -51,7 +51,11 @@ import MyHasChor.Choreography.Flaqr (HasFail(failVal))
 --                                     Wrap b -> label b
 --                                     Empty ->  label failVal 
 --                               )
-               
+instance Show a => Show (l ! a) where
+  show (Seal x) = "Seal " ++ show x
+instance Read a => Read (l ! a) where
+  readsPrec _ s = [(Seal x, rest) | ("Seal", rest1) <- lex s, (x, rest) <- readsPrec 0 rest1]
+
 labelIn :: l!(a @ loc) -> (l! a) @ loc
 labelIn (Seal asl) = case asl of
                         Wrap as -> wrap $ Seal as
@@ -102,3 +106,15 @@ sPutStrLn  pc la = restrict pc (\open -> print $ open la)
 
 sGetLine  :: SPrin pc -> Labeled IO pc (pc!String)
 sGetLine  pc = restrict pc (\_ -> getLine)
+
+
+sen :: forall a loc loc' pc l m. (Show a, Read a, KnownSymbol loc, KnownSymbol loc', Show (l!a), Read (l!a)) --, (N loc') ≽ (C pc), (N loc) ≽ (I pc))
+     => (Proxy loc, SPrin pc, SPrin l, (l!a) @ loc)  
+                                -- a sender's location, 
+                                -- a clearance, 
+                                -- and a value located at the sender
+     -> Proxy loc'-- ^ A receiver's location.
+     -> Labeled (Choreo m) pc ((pc!(l!a)) @ loc')
+sen (loc, pc, l, la) loc' = do
+  result <- restrict pc ( \_ -> (loc, la) ~> loc')
+  return $ labelIn result

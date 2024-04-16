@@ -1,4 +1,3 @@
--- {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DataKinds      #-}
 {-# LANGUAGE LambdaCase     #-}
@@ -84,7 +83,7 @@ joinIn' lx = wrap <$> do
   let x' = joinIn @l @l' @l'' x -- why didn't this get inferred?
   use (unwrap x') protect
 
-(~>:) :: forall a loc loc' pc l m. (Show a, Read a, KnownSymbol loc, KnownSymbol loc')--, Show (l!a), Read (l!a)) --, (N loc') ≽ (C pc), (N loc) ≽ (I pc))
+(~>:) :: forall a loc loc' pc l m. (Show a, Read a, KnownSymbol loc, KnownSymbol loc', Show (l!a), Read (l!a)) --, (N loc') ≽ (C pc), (N loc) ≽ (I pc))
      => (Proxy loc, SPrin pc, SPrin l, (l!a) @ loc)  
                                 -- a sender's location, 
                                 -- a clearance, 

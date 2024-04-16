@@ -15,7 +15,6 @@ import Control.Monad.IO.Class
 import Control.Monad.State hiding (lift)
 import Control.Monad.State qualified as S
 
-
 ----------------------------------------------------------------------
 -- * The Choreo monad
 
@@ -30,7 +29,6 @@ data ChoreoSig m a where
         => Proxy l
         -> (Unwrap l -> m a)
         -> ChoreoSig m (a @ l)
-
   Comm :: (Show a, Read a, KnownSymbol l, KnownSymbol l')
        => Proxy l
        -> a @ l

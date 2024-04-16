@@ -37,6 +37,8 @@ unwrap :: a @ l-> a
 unwrap (Wrap a) = a
 unwrap Empty    = error "this should never happen for a well-typed choreography"
 
+--sunwrap :: (s ! a) @ l -> s ! (a @ l)
+
 -- pack back Empty 
 -- (bob ! a ) @ l --> bob ! (a @ l) at l
 --                    bob ! (Empty) when not at l
