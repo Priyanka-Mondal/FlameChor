@@ -14,7 +14,19 @@ import Control.Concurrent.Async
 import Prelude hiding (compare)
 import System.Timeout 
 --import Main (NodeState)
-
+import Flame.Principals
+import Flame.TCB.Freer.IFC
+    ( type (!),
+      Labeled,
+      bind,
+      label,
+      use,
+      protect,
+      join,
+      restrict,
+      runLabeled,
+      relabel' )
+import Flame.Assert
 
 --data NodeState = INIT | PREPREPARE | PREPARE | COMMIT | COMMITTED
 --  deriving (Eq, Show, Ord, Read) 

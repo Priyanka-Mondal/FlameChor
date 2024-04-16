@@ -43,6 +43,7 @@ library
                     MyHasChor.Choreography.NetworkAsync.Http,
                     MyHasChor.Control.Monad.Freer, 
                     MyHasChor.Choreography.Labelled
+                    MyHasChor.Choreography.LabelledAsync
                     --Control.Monad.Freer
 
   -- other-modules:       
@@ -92,23 +93,23 @@ library
         , time >= 1.12.2            
                    
 
-executable bookseller-1-simple
-    hs-source-dirs:   playground/bookseller-1-simple
-    main-is:          Main.hs
-    default-language: GHC2021
-    build-depends:
-        , flame-plugin
-        , constraints
-        , reflection
-        , containers
-        , mtl
-        , text
-        , base    >= 4.16 && < 4.20
-        , time    >= 1.11 && < 1.13
-        , async >= 2.2  && < 2.3
-        , freer-simple
-        , flame-runtime
-        --, HasChor
+-- executable bookseller-1-simple
+--     hs-source-dirs:   playground/bookseller-1-simple
+--     main-is:          Main.hs
+--     default-language: GHC2021
+--     build-depends:
+--         , flame-plugin
+--         , constraints
+--         , reflection
+--         , containers
+--         , mtl
+--         , text
+--         , base    >= 4.16 && < 4.20
+--         , time    >= 1.11 && < 1.13
+--         , async >= 2.2  && < 2.3
+--         , freer-simple
+--         , flame-runtime
+--         --, HasChor
 
 --{ executable async
     -- hs-source-dirs:   playground/async
@@ -161,7 +162,7 @@ executable bookseller-1-simple
 --         , time    >= 1.11 && < 1.13
 --         , async >= 2.2  && < 2.3
 --         , freer-simple
---         , HasChor
+--         --, HasChor
 --         , flame-runtime
 
 

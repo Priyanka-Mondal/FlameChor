@@ -44,11 +44,15 @@ import GHC.TypeLits (TypeError, ErrorMessage(..), KnownSymbol)
 import System.IO
 import Control.Monad ((>=>))
 import Control.Monad.Identity
-
+import Control.Concurrent.Async
 
 -- instance (Member (Labeled pc) r) => LabeledMember pc r where
 data (l::KPrin) ! a  where
   Seal :: { unseal :: a }  -> l!a
+  --SealAsync :: { unsealAsync :: Async a} -> l! Async a
+
+
+
  -- deriving (Show, Read) -- these instances should be explicitly
                         -- most likely, they should encrypt and decrypt
 
@@ -61,7 +65,7 @@ data LabeledSig m (pc::KPrin) a where
     Use      :: (Monad m, l' ⊑ l, l' ⊑ pc') =>
       l'!b -> (b -> Labeled m pc' (l!a)) -> LabeledSig m pc (l!a)
     --LocOut :: (Monad m, l' ⊑ l, l' ⊑ pc', KnownSymbol loc) => Proxy loc
-    --  (l'!a) @ loc -> LabeledSig m pc (l!(a @ loc)) [Cyclic dependency]
+    --  LabeledSig m pc (l'!a) @ loc -> LabeledSig m pc (l!(a @ loc)) [Cyclic dependency]
 
 type Labeled m pc = Freer (LabeledSig m pc)
 
@@ -99,6 +103,9 @@ join' lx = lx >>= (\x -> use x (`use` protect))
 bind :: forall l l' a b. l ⊑ l' => l!a -> (a -> l'!b) -> l'!b
 bind la k = runIdentity . runLabeled $ use la (join' @_ @l' @l' @l' . protect . k)
 
+-- bindAsync :: forall l l' a b. l ⊑ l' => l! Async a -> (a -> l'!b) -> Async (l'!b)
+-- bindAsync la k = runIdentity . runLabeled $ use la (join' @_ @l' @l' @l' . protect . k)
+
 fmap :: (Monad m, l ⊑ l', pc ⊑ pc', l ⊑ pc', pc' ⊑ l') =>
     (a -> b) -> l!a -> l'!b
 fmap f = runIdentity . runLabeled . (`use` (protect . f))
@@ -109,7 +116,7 @@ runLabeled = interpFreer handler
     handler :: forall pc m a. Monad m => LabeledSig m pc a -> m a
     handler (Restrict pc ma) = ma unseal <&> Seal
     handler (Protect a) = pure (Seal a)
-    handler (Use (Seal b) k)  = runLabeled $ k b
+    handler (Use (Seal b) k)  = runLabeled $ k b 
 
 
 

@@ -44,7 +44,7 @@ import Flame.TCB.Freer.IFC
       relabel' )
 import Flame.Assert
 import GHC.TypeLits (KnownSymbol)
-import MyHasChor.Choreography.Network.Local (LocalConfig(locToBuf))
+import MyHasChor.Choreography.Network.Local --(LocalConfig(locToBuf))
 
 type Buyer = N "buyer"
 buyer :: SPrin Buyer
@@ -75,8 +75,10 @@ fromSeller = bs
 -- type FromSeller = ((C (Buyer \/ Seller)) /\ (I Seller))
 -- fromSeller :: SPrin FromSeller
 -- fromSeller = (((buyer *\/ seller)*->) */\ (seller*<-))
+
 joinIn' :: forall l l' l'' pc m a loc. 
-  (Monad m, l ⊑ l'', l' ⊑ l'', Show a, Read a) => Labeled m pc (l ! ((l'!a) @ loc)) -> Labeled m pc ((l''!a) @ loc)
+  (Monad m, l ⊑ l'', l' ⊑ l'', Show a, Read a) => 
+  Labeled m pc (l ! ((l'!a) @ loc)) -> Labeled m pc ((l''!a) @ loc)
 joinIn' lx = wrap <$> do 
   x <- lx 
   let x' = joinIn @l @l' @l'' x -- why didn't this get inferred?

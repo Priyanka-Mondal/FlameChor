@@ -77,9 +77,9 @@ epp c l' = interpFreer handler c
     handler (LabelOut l a) -- equivalent to locally
       | toLocTm l == l' = return $ wrap (unwrap a)
       | otherwise       = return Empty
-   -- We need value inside Labeled monad
+   -- We need value inside Labeled monad, Choreo monad needs to go inside Labeled monad
 
-   
+
             --lout $ bind (unwrap lal) (label . wrap)  --protect $ wrap <$> use $ unwrap a
      
 -- bind (unwrap lal) (label . wrap) 
