@@ -12,11 +12,11 @@ import MyHasChor.Choreography.NetworkAsync.Http
 import MyHasChor.Choreography.ChoreoAsync
 import Control.Concurrent.Async
 import MyHasChor.Choreography.Flaqr
-import MyHasChor.Choreography.Labelled
+import MyHasChor.Choreography.LabelledAsync
 import System.Environment
 import System.Timeout 
 import Data.Proxy
-import Control.Monad
+--import Control.Monad
 import GHC.TypeLits
 import Data.List hiding (compare)
 import Data.Monoid (Last(getLast))
@@ -61,7 +61,7 @@ locB = SName (Proxy :: Proxy "B")
 
 type D = N "C"
 locC :: SPrin D
-locC = SName (Proxy :: Proxy "D")
+locC = SName (Proxy :: Proxy "C")
 
 type Client = N "client"
 client :: SPrin Client
@@ -90,62 +90,65 @@ fromClient :: SPrin ABC
 fromClient = abc
 
 
+safePutStrLn :: forall l a. (Show a, l ⊑ ABC) => l!a 
+                      -> Labeled IO ABC (ABC!())
+safePutStrLn =  sPutStrLn  abc
 
-joinIn' :: forall l l' l'' pc m a loc. 
-  (Monad m, l ⊑ l'', l' ⊑ l'', Show a, Read a) => 
-  Labeled m pc (l ! ((l'!a) @ loc)) -> Labeled m pc ((l''!a) @ loc)
-joinIn' lx = wrap <$> do 
-  x <- lx 
-  let x' = joinIn @l @l' @l'' x -- why didn't this get inferred?
-  use (unwrap x') protect
+aGetLine :: Labeled IO FromA (FromA ! Int)
+aGetLine = strGetLine fromA
 
-(~>:) :: forall a loc loc' pc l m. (Show a, Read a, KnownSymbol loc, KnownSymbol loc')--, Show (l!a), Read (l!a)) --, (N loc') ≽ (C pc), (N loc) ≽ (I pc))
-     => (Proxy loc, SPrin pc, SPrin l, (l!a) @ loc)  
-                                -- a sender's location, 
-                                -- a clearance, 
-                                -- and a value located at the sender
-     -> Proxy loc'-- ^ A receiver's location.
-     -> Labeled (Choreo m) pc (Async (pc!(l!a)) @ loc')
-(~>:) (loc, pc, l, la) loc' = do
-  result <- restrict pc ( \_ -> (loc, la) ~> loc')
-  return $ labelIn result
+bGetLine :: Labeled IO FromB (FromB ! Int)
+bGetLine = strGetLine fromB
 
--- | Conditionally execute choreographies based on a located value.
-sCond ::  forall pc l loc m a b. (Show a, Read a, KnownSymbol loc, pc ⊑ l)
-     => (Proxy loc, SPrin pc, a @ loc) -- ^ A pair of a location and a scrutinee located on
-                                         -- it.
-     -> (a -> Labeled (Choreo m) pc b) -- ^ A function that describes the follow-up
-                          -- choreographies based on the value of scrutinee.
-     -> Labeled (Choreo m) pc (l ! b)
-sCond (l, pc, la) c = restrict pc $ \_ -> cond (l, la) (runLabeled . c)--(\la -> runLabeled $ c la)
-
+cGetLine :: Labeled IO FromC (FromC ! Int)
+cGetLine = strGetLine fromB
+--------------
 --------------
 
-majorityQuorum :: Choreo IO (Async Int @ "client")
+majorityQuorum :: Labeled (Choreo IO) ABC ((ABC ! (FromClient ! Int)) @ "client")
 majorityQuorum = do 
  
-  client `locally` \_ -> do putStrLn "at client$"
+  title <-(abc, client, abc, fromClient) `sLocally` (\_ -> do
+             safePutStrLn @ABC $ label "at client$")
 
-  a <- locA `locally` \_ -> do
-      putStrLn "Enter value at A::"
-      readLn :: IO Int
+  --client `locally` \_ -> do putStrLn "at client$"
 
-  b <- locB `locally` \_ -> do
-      putStrLn "Enter value at B::"
-      readLn :: IO Int
+  a <- (abc, locA, abc, fromA) `sLocally` (\_ -> do
+             safePutStrLn @ABC $ label "Enter value at A::"
+             relabel' abc aGetLine)
 
-  c <- locC `locally` \_ -> do
-      putStrLn "Enter value at C::"
-      readLn :: IO Int
+  -- a <- locA `locally` \_ -> do
+  --     putStrLn "Enter value at A::"
+  --     readLn :: IO Int
 
-  a' <- (locA, a) ~> client
-  b' <- (locB, b) ~> client
-  c' <- (locC, c) ~> client
-  
-
-  abc <- client `locally` \un -> do 
-    selecT $ compare_ [un a', un b', un c'] 2
-
+  b <- (abc, locB, abc, fromB) `sLocally` (\_ -> do
+             safePutStrLn @ABC $ label "Enter value at B::"
+             relabel' abc bGetLine)
+  -- b <- locB `locally` \_ -> do
+  --     putStrLn "Enter value at B::"
+  --     readLn :: IO Int
+  c <- (abc, locC, abc, fromC) `sLocally` (\_ -> do
+             safePutStrLn @ABC $ label "Enter value at C::"
+             relabel' abc cGetLine)
+  -- c <- locC `locally` \_ -> do
+  --     putStrLn "Enter value at C::"
+  --     readLn :: IO Int
+  a' <- (sym locA, abc, fromA, a) ~>: sym client
+  b' <- (sym locB, abc, fromB, b) ~>: sym client
+  c' <- (sym locC, abc, fromC, c) ~>: sym client
+ 
+  -- price <- (abc, client, abc, fromClient) `sLocally` (\un -> do
+  --   use @_ @_ @_ @ABC ((joinOutAsync @ABC @ABC @ABC @Int @"client" (un a'))) (\t -> do
+  --                                     z <- wait t
+  --                                     protect $ times3 t))
+  {--
+  -- title is (BS ! (BS ! String)) @ seller
+  --  price <- (bs, seller, bs, fromSeller) `slocally` (\un -> do
+  --   use @_ @_ @_ @BS (join @_ @_ @BS (un title')) (\t -> protect $ priceOf t))
+  -- abc <- (abc, client, abc, fromClient) `sLocallyAsync` \un -> do 
+  --   relabel' abc $ selecT $ compare_ [un a', un b', un c'] 2
+--Expected: Labeled IO pc'0 (l0 ! (FromClient ! Int))
+--    Actual: IO (Async a0)
   m <- client `locally` \un -> do
     q <- wait (un abc)
     print q
@@ -175,6 +178,7 @@ majorityQuorum = do
       putStrLn "consensus done"
       getLine
   return abc
+  --}
 
 
 majorityQuorumMain :: IO ()
@@ -189,4 +193,8 @@ majorityQuorumMain = do
                        ]
 ----------------------------------------------------------------------
 -- Entry point
+
+times3 :: Int -> Int
+times3 x = 3*x 
+
 main = majorityQuorumMain

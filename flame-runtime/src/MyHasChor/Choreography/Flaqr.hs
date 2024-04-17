@@ -53,7 +53,7 @@ select :: (HasFail a, Eq a) => Async a -> Async a -> IO (Async a)
 select a b = do
     a' <- timeout time (wait a)
     case a' of 
-      (Just e) | (e /= failVal) -> return a
+      (Just e) | e /= failVal -> return a
       _ -> do
          b' <- timeout time (wait b)
          case b' of 
@@ -87,8 +87,8 @@ select_ (a:as) = do
    a''<- a 
    a' <- timeout time (wait a'')
    case a' of 
-      (Just e) | (e /= failVal) -> return a''
-      _ ->  (select_ as)
+      (Just e) | e /= failVal -> return a''
+      _ ->  select_ as
  
 {--select2' :: (HasFail a, Eq a) => Async a -> IO (Async a)
 select2' a = do
@@ -103,8 +103,8 @@ select' :: (HasFail a, Eq a) => Async a -> IO (Async a)
 select' a = do
     a' <- timeout time (wait a)
     case a' of 
-      (Just e) | (e /= failVal) -> return a
-      _ -> (async (return failVal))
+      (Just e) | e /= failVal -> return a
+      _ -> async (return failVal)
 
 combinations :: Int -> [a] -> [[a]]
 combinations 0 _  = [[]]
@@ -132,10 +132,10 @@ compare' x [y] = compare x y
 compare' x (y:ys) = do 
     a' <- timeout time (wait x)
     case a' of 
-      (Just e) | (e /= failVal) -> do 
+      (Just e) | e /= failVal -> do 
          b' <- timeout time (wait y)
          case b' of 
-          (Just e') -> if (e == e') then (compare' x ys) else async (return failVal)
+          (Just e') -> if e == e' then compare' x ys else async (return failVal)
           Nothing -> async (return failVal)
       _ -> async (return failVal)
 
@@ -144,10 +144,22 @@ compare :: forall a. (Ord a, HasFail a) => Async a -> Async a -> IO (Async a)
 compare a b = do
     a' <- timeout time (wait a)
     case a' of 
-      (Just e) | (e /= failVal) -> do 
+      (Just e) | e /= failVal -> do 
          b' <- timeout time (wait b)
          case b' of 
-          (Just e') -> if (e == e') then return b else async (return failVal)
+          (Just e') -> if e == e' then return b else async (return failVal)
+          Nothing -> async (return failVal)
+      _ -> async (return failVal)
+
+
+com:: forall a. (Ord a, HasFail a) => Async a -> Async a -> IO (Async a)
+com a b = do
+    a' <- timeout time (wait a)
+    case a' of 
+      (Just e) | e /= failVal -> do 
+         b' <- timeout time (wait b)
+         case b' of 
+          (Just e') -> if e == e' then return b else async (return failVal)
           Nothing -> async (return failVal)
       _ -> async (return failVal)
 
@@ -157,4 +169,11 @@ getLargest a b = do
  z <- timeout 10000000 (waitBoth a b)
  case z of 
   Nothing -> async (return failVal)
-  Just (x,y) -> if x > y then (return a) else (return b)
+  Just (x,y) -> if x > y then return a else return b
+
+
+--  Expected: Labeled IO ABC (ABC ! Async a0)
+--     Actual: IO (Async a2)
+
+-- sCompare  :: SPrin pc -> IO (Async Int) -> Labeled IO pc (pc ! Async Int)
+-- sCompare  pc a = restrict pc (\_ -> a)

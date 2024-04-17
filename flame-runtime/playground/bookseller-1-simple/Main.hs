@@ -75,13 +75,13 @@ fromSeller = bs
 -- fromSeller :: SPrin FromSeller
 -- fromSeller = (((buyer *\/ seller)*->) */\ (seller*<-))
 
-joinIn' :: forall l l' l'' pc m a loc. 
-  (Monad m, l ⊑ l'', l' ⊑ l'', Show a, Read a) => 
-  Labeled m pc (l ! ((l'!a) @ loc)) -> Labeled m pc ((l''!a) @ loc)
-joinIn' lx = wrap <$> do 
-  x <- lx 
-  let x' = joinIn @l @l' @l'' x -- why didn't this get inferred?
-  use (unwrap x') protect
+-- joinIn' :: forall l l' l'' pc m a loc. 
+--   (Monad m, l ⊑ l'', l' ⊑ l'', Show a, Read a) => 
+--   Labeled m pc (l ! ((l'!a) @ loc)) -> Labeled m pc ((l''!a) @ loc)
+-- joinIn' lx = wrap <$> do 
+--   x <- lx 
+--   let x' = joinIn @l @l' @l'' x -- why didn't this get inferred?
+--   use (unwrap x') protect
 
 (~>:) :: forall a loc loc' pc l m. (Show a, Read a, KnownSymbol loc, KnownSymbol loc', Show (l!a), Read (l!a)) --, (N loc') ≽ (C pc), (N loc) ≽ (I pc))
      => (Proxy loc, SPrin pc, SPrin l, (l!a) @ loc)  
@@ -126,7 +126,9 @@ bookseller = do
  
   -- the seller checks the price of the book
   price <- (bs, seller, bs, fromSeller) `slocally` (\un -> do
-    use @_ @_ @_ @BS (join @_ @_ @BS (un title')) (\t -> protect $ priceOf t))
+    use @_ @_ @_ @BS (join @_ @_ @BS (un title')) (protect . priceOf))
+  --  price <- seller `locally` \un -> return $ priceOf (un title')
+  
   -- the seller sends back the price of the book to the buyer
   price' <- (sym seller, bs, fromSeller, price) ~>: sym buyer
  
@@ -138,7 +140,7 @@ bookseller = do
   labelIn' (sCond (sym buyer, bs, decision) (\d -> labelIn' $ use d (\case
     True  -> do
       deliveryDate  <- (bs, seller, bs, fromSeller) `slocally` (\un -> do
-        use @_ @_ @_ @BS (join (un title')) (\t -> protect $ deliveryDateOf t))
+        use @_ @_ @_ @BS (join (un title')) (protect . deliveryDateOf))
       deliveryDate' <- (sym seller, bs, fromSeller, deliveryDate) ~>: sym buyer
  
       labelOut'((bs, buyer, bs, fromBuyer) `slocally` (\un -> do --labelOut'

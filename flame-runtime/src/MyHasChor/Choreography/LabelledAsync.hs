@@ -1,4 +1,3 @@
--- {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DataKinds      #-}
 {-# LANGUAGE LambdaCase     #-}
@@ -47,7 +46,8 @@ import Flame.Assert
 import GHC.TypeLits (KnownSymbol)
 import MyHasChor.Choreography.Network.Local (LocalConfig(locToBuf))
 import MyHasChor.Choreography.Labelled
-
+import MyHasChor.Choreography.Flaqr(compare)
+import Flame.Runtime.Crypto.KeyMap (adjustKey)
 
 
 labelInAsync :: l!(Async a @ loc) -> (l! Async a) @ loc
@@ -55,18 +55,19 @@ labelInAsync (Seal asl) = case asl of
                         Wrap as -> wrap $ Seal as
                         Empty   -> Empty
 
+
 -- labelInIO :: l ! (Async a @ loc) -> (Async a -> a)  -> IO (Async (l!a)) @ loc
 -- labelInIO lal f = wrap <$> async $ return $ bind lal (label . f . unwrap)
 
-labelin :: l ! (Async a @ loc) -> (l! Async a) @ loc
-labelin lal = wrap $ bind lal (label . unwrap)
+-- labelin :: l ! (Async a @ loc) -> (l! Async a) @ loc
+-- labelin lal = wrap $ bind lal (label . unwrap)
 
-labelI' :: (Monad m) => Labeled m pc (l!(a @ loc)) -> Labeled m pc ((l!a) @ loc)
-labelI' e = e >>= (\lal -> wrap <$> use lal (protect . unwrap))
+-- labelI' :: (Monad m) => Labeled m pc (l!(a @ loc)) -> Labeled m pc ((l!a) @ loc)
+-- labelI' e = e >>= (\lal -> wrap <$> use lal (protect . unwrap))
 
 labelIn' :: (Monad m) => Labeled m pc (l!(Async a @ loc))-> 
     Labeled m pc ((l! Async a) @ loc)
-labelIn' e = e >>= (\lal -> wrap <$> use lal (protect.unwrap))
+labelIn' e = labelIn <$> e  --e >>= (\lal -> wrap <$> use lal (protect.unwrap))
 
 -- | Interpret the effects in a freer monad in terms of another monad.
 wrapLabeled :: forall pc m a loc. Monad m => Labeled m pc a -> Labeled m pc (a @ loc)
@@ -79,14 +80,14 @@ labelOutAsync Empty     = Seal Empty
 labeloutM :: Labeled m pc (Async (l!a) @ loc) -> Labeled m pc (l!(Async a @ loc))
 labeloutM e = labelOutAsync <$> e
 
-joinInAsync :: forall l l' l'' a loc. (Show a, Read a, l ⊑ l'', l' ⊑ l'') => 
- l!((l'! Async a) @ loc) -> (l''!Async a) @ loc
-joinInAsync = wrap . join . unwrap . labelIn
+-- joinInAsync :: forall l l' l'' a loc. (Show a, Read a, l ⊑ l'', l' ⊑ l'') => 
+--  l!((l'! Async a) @ loc) -> (l''!Async a) @ loc
+-- joinInAsync lal = labelInAsync $ join $ bind lal (label . labelOutAsync) -- Using unwrap
 
-joinInAsync' :: forall l l' l'' pc m a loc. 
-  (Monad m, l ⊑ l'', l' ⊑ l'', Show a, Read a) => 
-  Labeled m pc (l ! ((l'! Async a) @ loc)) -> Labeled m pc ((l''! Async a) @ loc)
-joinInAsync' lx = joinInAsync <$> lx
+-- joinInAsync' :: forall l l' l'' pc m a loc. 
+--   (Monad m, l ⊑ l'', l' ⊑ l'', Show a, Read a) => 
+--   Labeled m pc (l ! ((l'! Async a) @ loc)) -> Labeled m pc ((l''! Async a) @ loc)
+-- joinInAsync' lx = joinInAsync <$> lx
  
 labelOut' :: forall loc m pc a l. (Monad m,  KnownSymbol loc, pc ⊑ l) => 
     Labeled (Choreo m) pc ((l!a) @ loc) -> Labeled (Choreo m) pc (l!(a @ loc))
@@ -96,24 +97,41 @@ joinOutAsync :: forall l l' l'' a loc. (l ⊑ l'', l' ⊑ l'') => -- added l ⊑
  l!(Async (l'! a) @ loc) -> l''!(Async a @ loc)
 joinOutAsync lal = join $ bind lal (label . labelOutAsync)
 
+-- joinOutAsync' :: forall l l' l'' a loc. (l ⊑ l'', l' ⊑ l'') => -- added l ⊑ l'
+--  (l ! Async (l'! a)) @ loc -> l''!(Async a @ loc)
+-- joinOutAsync' (Wrap as) = join $ bind as ()
+-- --Seal (label $ Wrap $ Prelude.fmap (\(Seal a) -> a) as)
+-- joinOutAsync' Empty     = Seal Empty
+
+--joinOutAsync' lal = join $ bind lal (label . labelOutAsync)
+
+sLocally :: forall pc loc_pc l loc m a. (Monad m, KnownSymbol loc, pc ⊑ loc_pc, pc ⊑ l,  Show a, Read a)
+               => (SPrin pc, SPrin (N loc), SPrin loc_pc, SPrin l)
+               -> (Unwrap loc -> Labeled m loc_pc (l!a))
+               -> Labeled (Choreo m) pc ((l! a) @ loc) -- type changes
+sLocally (pc, loc, loc_pc, l) k = do
+  result <- restrict pc (\_ -> locally (sym loc) (\un -> runLabeled $ k un))
+  return $ labelIn (joinOut result) --labelIn
 
 sLocallyAsync :: forall pc loc_pc l loc m a. (Monad m, KnownSymbol loc, pc ⊑ loc_pc, pc ⊑ l,  Show a, Read a)
                => (SPrin pc, SPrin (N loc), SPrin loc_pc, SPrin l)
-               -> (Unwrap loc -> Labeled m loc_pc (Async (l!a)))
-               -> Labeled (Choreo m) pc ((l! Async a) @ loc) -- type changes
+               -> (Unwrap loc -> Labeled m loc_pc (l! Async a))
+               -> Labeled (Choreo m) pc (l! Async a @ loc) -- type changes
 sLocallyAsync (pc, loc, loc_pc, l) k = do
   result <- restrict pc (\_ -> locally (sym loc) (\un -> runLabeled $ k un))
-  return $ labelIn (joinOutAsync result) --labelIn
-
-
+  return $ labelIn (joinOut result) --labelIn
 
 (~>:) :: forall a loc loc' pc l m. (Show a, Read a, KnownSymbol loc, KnownSymbol loc', Show (l!a), Read (l!a)) --, (N loc') ≽ (C pc), (N loc) ≽ (I pc))
      => (Proxy loc, SPrin pc, SPrin l, (l!a) @ loc)  
-     -> Proxy loc'-- ^ A receiver's location.
-     -> Labeled (Choreo m) pc ((pc! Async (l ! a)) @ loc')
+     -> Proxy loc'
+     -> Labeled (Choreo m) pc ((pc ! Async (l ! a)) @ loc')
 (~>:) (loc, pc, l, la) loc' = do
-  result <- restrict pc ( \_ -> (loc, la) ~> loc')
-  return $ labelIn result
+  result <- restrict pc (\_ -> (loc, la) ~> loc')
+  return $ labelIn result 
+
+-- swait :: Async (l ! a) -> ()-> l ! a 
+-- swait = do 
+  
 
 -- | Conditionally execute choreographies based on a located value.
 sCond ::  forall pc l loc m a b. (Show a, Read a, KnownSymbol loc, pc ⊑ l)
@@ -125,5 +143,17 @@ sCond (l, pc, la) c = restrict pc $ \_ -> cond (l, la) (runLabeled . c)
 sPutStrLn  :: Show a => SPrin pc -> (l ⊑ pc) => l!a -> Labeled IO pc (pc!())
 sPutStrLn  pc la = restrict pc (\open -> print $ open la)
 
-sGetLine  :: SPrin pc -> Labeled IO pc (pc!String)
-sGetLine  pc = restrict pc (\_ -> getLine)
+strGetLine  :: SPrin pc -> Labeled IO pc (pc ! Int)
+strGetLine  pc = restrict pc (\_ -> readLn)
+
+--(l ⊑ l') =>
+--(l ! a) -> (a -> l' ! b) -> l' ! b
+
+-- asyncWait :: forall a b l l' loc. 
+--   (l ! Async (l' ! a)) @ loc -> (Async (l' ! a) @ loc -> Async (l' ! a)) 
+--                                                   -> l ! (l' ! a) @ loc
+-- asyncWait lal un = wrap $ bind (un lal) (\x -> do 
+--                                                       y <- wait x
+--                                                       label y
+--                                                       )
+                                
