@@ -2,7 +2,7 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE LambdaCase     #-}
 {-# LANGUAGE ExplicitNamespaces #-}
-
+{-# OPTIONS_GHC -fplugin Flame.Solver -fobject-code #-}
 module Main where
 
 --import MyHasChor.Choreography

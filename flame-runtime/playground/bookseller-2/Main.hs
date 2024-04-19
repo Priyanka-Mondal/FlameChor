@@ -18,17 +18,11 @@
 {-# HLINT ignore "[Replace {rtype = Expr, pos = SrcSpan {startLine = 132, startCol = 57, endLine = 132, endCol = 81}, subts = [("a",SrcSpan {startLine = 132, startCol = 64, endLine = 132, endCol = 74}),("b",SrcSpan {startLine = 132, startCol = 77, endLine = 132, endCol = 78})], orig = "a . b"}]" #-}
 
 module Main where
-
--- import Choreography
--- import Choreography.Choreo
--- import Choreography.Location
-
 import Control.Concurrent.Async
 import MyHasChor.Choreography.ChoreoAsync
 import MyHasChor.Choreography.Location
 import MyHasChor.Choreography.NetworkAsync
 import MyHasChor.Choreography.NetworkAsync.Http
-
 import Data.Proxy
 import Data.Time
 import System.Environment
@@ -45,10 +39,28 @@ type Seller = N "seller"
 seller :: SPrin Seller
 seller = SName (Proxy :: Proxy "seller")
 
-type BS = (Buyer \/ Seller)
+type Seller2 = N "seller2"
+seller2 :: SPrin Seller2
+seller2 = SName (Proxy :: Proxy "seller2")
+
+-- type BS = (Buyer \/ Seller)
+
+type BS = ((Buyer \/ Seller) \/ Seller2)
+
+-- bs :: SPrin BS
+-- bs = buyer *\/ seller
 
 bs :: SPrin BS
-bs = buyer *\/ seller
+bs = ((buyer *\/ seller) *\/ seller2)
+
+
+-- type FromBuyer = BS
+-- fromBuyer :: SPrin BS
+-- fromBuyer = bs
+
+-- type FromSeller = BS
+-- fromSeller :: SPrin BS
+-- fromSeller = bs
 
 type FromBuyer = BS
 fromBuyer :: SPrin BS
@@ -57,6 +69,12 @@ fromBuyer = bs
 type FromSeller = BS
 fromSeller :: SPrin BS
 fromSeller = bs
+
+type FromSeller2 = BS
+fromSeller2 :: SPrin BS
+fromSeller2 = bs
+
+
 
 instance Show a => Show (l ! a) where
   show (Seal x) = "Seal " ++ show x
@@ -170,25 +188,46 @@ bookseller = do
 
   -- the buyer sends the title to the seller
   title' <- (sym buyer, bs, fromBuyer, title) ~>: sym seller
+  title2' <- (sym buyer, bs, fromBuyer, title) ~>: sym seller2
 
     -- the seller checks the price of the book
   price <- (bs, seller, bs, fromSeller) `sLocally` \un -> do
               title'' <- join . join @_ @_ @BS <$> restrict @_ @_ @BS bs (\_ -> wait (un title'))
               use title'' (protect @_ @BS. priceOf)
+  
+  price2 <- (bs, seller2, bs, fromSeller2) `sLocally` \un -> do
+              title'' <- join . join @_ @_ @BS <$> restrict @_ @_ @BS bs (\_ -> wait (un title2'))
+              use title'' (protect @_ @BS. priceOf2)
 
+  
   -- the seller sends back the price of the book to the buyer
   price' <- (sym seller, bs, fromSeller, price) ~>: sym buyer
+  price2' <- (sym seller2, bs, fromSeller2, price2) ~>: sym buyer
 
   (bs, seller, bs, fromSeller) `sLocally` \un -> do
-                 (t'' :: BS!String) <- join . join @_ @_ @BS <$> restrict @_ @_ @BS bs (\_ -> wait (un title'))
-                 safePutStrLn @BS $ t''
+                 (t1 :: BS!String) <- join . join @_ @_ @BS <$> restrict @_ @_ @BS bs (\_ -> wait (un title'))
+                -- (t2 :: BS!String) <- join . join @_ @_ @BS <$> restrict @_ @_ @BS bs (\_ -> wait (un title'))
+                 safePutStrLn @BS $ t1
                  --use t'' (protect @_ @BS. priceOf)
 
+  (bs, seller2, bs, fromSeller2) `sLocally` \un -> do
+                 (t1 :: BS!String) <- join . join @_ @_ @BS <$> restrict @_ @_ @BS bs (\_ -> wait (un title2'))
+                -- (t2 :: BS!String) <- join . join @_ @_ @BS <$> restrict @_ @_ @BS bs (\_ -> wait (un title'))
+                 safePutStrLn @BS $ t1
+
   -- the buyer decides whether to buy the book or not
+  large <- (bs, buyer, bs, fromBuyer) `sLocally` \un -> do
+             (price1 :: BS! Int) <- join . join @_ @_ @BS <$>  restrict @_ @_ @BS bs (\_ -> (wait (un price')))
+             (price2 :: BS! Int) <- join . join @_ @_ @BS <$>  restrict @_ @_ @BS bs (\_ -> (wait (un price2')))
+             use @_ @_ @_ @BS price1 (\p -> use @_ @_ @_ @BS price2 (\p2 -> protect (largest (p,p2))))
+            
   (bs, buyer, bs, fromBuyer) `sLocally` \un -> do
-                 (price'' :: BS!Int) <- join . join @_ @_ @BS <$> restrict @_ @_ @BS bs (\_ -> wait (un price'))
-                 safePutStrLn @BS $ price''
-                 --use @_ @_ @_ @BS price'' (\p -> protect (p < budget))
+                 safePutStrLn @BS $ un large
+  
+  (bs, seller2, bs, fromSeller2) `sLocally` (\un -> do
+             safePutStrLn @BS $ un price2
+             relabel' bs sellerGetLine)
+  
   (bs, seller, bs, fromSeller) `sLocally` (\un -> do
              safePutStrLn @BS $ un price
              relabel' bs sellerGetLine)
@@ -199,11 +238,18 @@ budget :: Int
 budget = 100
 
 priceOf :: String -> Int
-priceOf "Types and Programming Languages" = 80
+priceOf "T" = 80
 priceOf "H"            = 120
 
+priceOf2 :: String -> Int
+priceOf2 "T" = 90
+priceOf2 "H"            = 100
+
+largest :: (Int , Int) -> Int
+largest (a ,b) = if (a > b) then a else b
+
 deliveryDateOf :: String -> Day
-deliveryDateOf "Types and Programming Languages" = fromGregorian 2022 12 19
+deliveryDateOf "T" = fromGregorian 2022 12 19
 deliveryDateOf "H"            = fromGregorian 2023 01 01
 
 main :: IO ()
@@ -212,8 +258,10 @@ main = do
   case loc of
     "buyer"  -> runChoreography cfg (runLabeled bookseller) "buyer"
     "seller" -> runChoreography cfg (runLabeled bookseller) "seller"
+    "seller2" -> runChoreography cfg (runLabeled bookseller) "seller2"
   return ()
   where
     cfg = mkHttpConfig [ ("buyer",  ("localhost", 4242))
                        , ("seller", ("localhost", 4343))
+                       , ("seller2", ("localhost", 4344))
                        ]
