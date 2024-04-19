@@ -41,12 +41,11 @@ instance HasFail String where
   --failVal :: String
   failVal = "fail"
 
---instance HasFail NodeState where
---  failVal = INIT
+
 
 
 time :: Int 
-time = 10000000
+time = 1000000
 
 --simple select between 2 values
 select :: (HasFail a, Eq a) => Async a -> Async a -> IO (Async a)

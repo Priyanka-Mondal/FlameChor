@@ -1,15 +1,10 @@
 {-# LANGUAGE BlockArguments #-}
-
 {-# LANGUAGE LambdaCase     #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
-
-
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE PartialTypeSignatures #-}
-
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeFamilies #-}
-
 {-# LANGUAGE PostfixOperators, TypeOperators #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
@@ -23,8 +18,10 @@ import MyHasChor.Choreography.ChoreoAsync
 import MyHasChor.Choreography.Location
 import MyHasChor.Choreography.NetworkAsync
 import MyHasChor.Choreography.NetworkAsync.Http
+import MyHasChor.Choreography.Flaqr
 import Data.Proxy
 import Data.Time
+import System.Timeout 
 import System.Environment
 import GHC.TypeLits
 
@@ -178,6 +175,63 @@ buyerGetLine = sGetLine fromBuyer
 sellerGetLine :: Labeled IO FromSeller (FromSeller!String)
 sellerGetLine = sGetLine fromSeller
 
+-- instance HasFail (BS!a) where
+--   failVal = ()
+
+sSelect :: forall l l' l'' a. (HasFail a, Eq a, l ⊑ l'', l' ⊑ l'', Show a) => 
+    Async (l!(l'!a)) -> Async (l!(l'!a)) -> IO (Async (l''!a))
+sSelect a b = do
+    a' <- timeout time (wait a)
+    case a' of 
+      (Just e) -> do 
+        let e1 = join e
+        case e1 of 
+          Seal c | c /= failVal -> do 
+            putStrLn $ "a Just e" ++ show c
+            async (return e1)
+          _ -> do 
+                b' <- timeout time (wait b)
+                case b' of 
+                  (Just e) -> do
+                    let b1 = join e
+                    async (return b1) 
+                  Nothing -> async (return (Seal failVal))
+      _ -> do -- Nothing i.e. a did not arrive
+         b' <- timeout time (wait b)
+         putStrLn $ "a Nothing"
+         case b' of 
+          (Just e) -> do 
+            let b1' = join e
+            async( return b1')
+          Nothing -> do 
+            putStrLn $ "b Nothing"
+            async (return (Seal failVal))
+
+bsSelect :: (HasFail a, Eq a, BS ⊑ BS) => 
+    Async (BS!(BS!a)) -> Async (BS!(BS!a)) -> IO (Async (BS!a))
+bsSelect a b = do
+    a' <- timeout time (wait a)
+    case a' of 
+      (Just e) -> do 
+        let e1 = join e
+        case e1 of 
+          Seal c | c /= failVal -> async (return e1)
+          _ -> do 
+                b' <- timeout time (wait b)
+                case b' of 
+                  (Just e) -> do
+                    let b1 = join e
+                    async (return b1) 
+                  Nothing -> async (return (Seal failVal))
+      _ -> do
+         b' <- timeout time (wait b)
+         case b' of 
+          (Just e) -> do 
+            let b1' = join e
+            async( return b1')
+          Nothing -> async (return (Seal failVal))
+
+
 -- | `bookseller` is a choreography that implements the bookseller protocol.
 bookseller :: Labeled (Choreo IO) BS ((BS ! (String)) @ "seller")
 bookseller = do
@@ -206,23 +260,26 @@ bookseller = do
 
   (bs, seller, bs, fromSeller) `sLocally` \un -> do
                  (t1 :: BS!String) <- join . join @_ @_ @BS <$> restrict @_ @_ @BS bs (\_ -> wait (un title'))
-                -- (t2 :: BS!String) <- join . join @_ @_ @BS <$> restrict @_ @_ @BS bs (\_ -> wait (un title'))
                  safePutStrLn @BS $ t1
                  --use t'' (protect @_ @BS. priceOf)
 
   (bs, seller2, bs, fromSeller2) `sLocally` \un -> do
                  (t1 :: BS!String) <- join . join @_ @_ @BS <$> restrict @_ @_ @BS bs (\_ -> wait (un title2'))
-                -- (t2 :: BS!String) <- join . join @_ @_ @BS <$> restrict @_ @_ @BS bs (\_ -> wait (un title'))
                  safePutStrLn @BS $ t1
 
   -- the buyer decides whether to buy the book or not
-  large <- (bs, buyer, bs, fromBuyer) `sLocally` \un -> do
-             (price1 :: BS! Int) <- join . join @_ @_ @BS <$>  restrict @_ @_ @BS bs (\_ -> (wait (un price')))
-             (price2 :: BS! Int) <- join . join @_ @_ @BS <$>  restrict @_ @_ @BS bs (\_ -> (wait (un price2')))
-             use @_ @_ @_ @BS price1 (\p -> use @_ @_ @_ @BS price2 (\p2 -> protect (largest (p,p2))))
-            
+  -- large <- (bs, buyer, bs, fromBuyer) `sLocally` \un -> do
+  --            (price1 :: BS! Int) <- join . join @_ @_ @BS <$>  restrict @_ @_ @BS bs (\_ -> (wait (un price')))
+  --            (price2 :: BS! Int) <- join . join @_ @_ @BS <$>  restrict @_ @_ @BS bs (\_ -> (wait (un price2')))
+  --            use @_ @_ @_ @BS price1 (\p -> use @_ @_ @_ @BS price2 (\p2 -> protect (largest (p,p2))))
+  
+  large' <- (bs, buyer, bs, fromBuyer) `sLocally` \un -> do
+       restrict @_ @_ @BS bs (\_ -> (do 
+        s <- sSelect @BS @BS @BS (un price2') (un price')
+        wait s))
+                 
   (bs, buyer, bs, fromBuyer) `sLocally` \un -> do
-                 safePutStrLn @BS $ un large
+                 safePutStrLn @BS $ (un large')
   
   (bs, seller2, bs, fromSeller2) `sLocally` (\un -> do
              safePutStrLn @BS $ un price2
@@ -250,7 +307,7 @@ largest (a ,b) = if (a > b) then a else b
 
 deliveryDateOf :: String -> Day
 deliveryDateOf "T" = fromGregorian 2022 12 19
-deliveryDateOf "H"            = fromGregorian 2023 01 01
+deliveryDateOf "H" = fromGregorian 2023 01 01
 
 main :: IO ()
 main = do
