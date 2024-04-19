@@ -157,8 +157,11 @@ safePutStrLn =  sPutStrLn bs
 buyerGetLine :: Labeled IO FromBuyer (FromBuyer!String)
 buyerGetLine = sGetLine fromBuyer
 
+sellerGetLine :: Labeled IO FromSeller (FromSeller!String)
+sellerGetLine = sGetLine fromSeller
+
 -- | `bookseller` is a choreography that implements the bookseller protocol.
-bookseller :: Labeled (Choreo IO) BS ((BS ! (Bool)) @ "buyer")
+bookseller :: Labeled (Choreo IO) BS ((BS ! (String)) @ "seller")
 bookseller = do
   -- the buyer node prompts the user to enter the title of the book to buy
   title <- (bs, buyer, bs, fromBuyer) `sLocally` (\_ -> do
@@ -168,7 +171,7 @@ bookseller = do
   -- the buyer sends the title to the seller
   title' <- (sym buyer, bs, fromBuyer, title) ~>: sym seller
 
-  -- the seller checks the price of the book
+    -- the seller checks the price of the book
   price <- (bs, seller, bs, fromSeller) `sLocally` \un -> do
               title'' <- join . join @_ @_ @BS <$> restrict @_ @_ @BS bs (\_ -> wait (un title'))
               use title'' (protect @_ @BS. priceOf)
@@ -176,10 +179,19 @@ bookseller = do
   -- the seller sends back the price of the book to the buyer
   price' <- (sym seller, bs, fromSeller, price) ~>: sym buyer
 
+  (bs, seller, bs, fromSeller) `sLocally` \un -> do
+                 (t'' :: BS!String) <- join . join @_ @_ @BS <$> restrict @_ @_ @BS bs (\_ -> wait (un title'))
+                 safePutStrLn @BS $ t''
+                 --use t'' (protect @_ @BS. priceOf)
+
   -- the buyer decides whether to buy the book or not
   (bs, buyer, bs, fromBuyer) `sLocally` \un -> do
                  (price'' :: BS!Int) <- join . join @_ @_ @BS <$> restrict @_ @_ @BS bs (\_ -> wait (un price'))
-                 use @_ @_ @_ @BS price'' (\p -> protect (p < budget))
+                 safePutStrLn @BS $ price''
+                 --use @_ @_ @_ @BS price'' (\p -> protect (p < budget))
+  (bs, seller, bs, fromSeller) `sLocally` (\un -> do
+             safePutStrLn @BS $ un price
+             relabel' bs sellerGetLine)
   
   -- if the buyer decides to buy the book, the seller sends the delivery date to the buyer
   
@@ -188,11 +200,11 @@ budget = 100
 
 priceOf :: String -> Int
 priceOf "Types and Programming Languages" = 80
-priceOf "Homotopy Type Theory"            = 120
+priceOf "H"            = 120
 
 deliveryDateOf :: String -> Day
 deliveryDateOf "Types and Programming Languages" = fromGregorian 2022 12 19
-deliveryDateOf "Homotopy Type Theory"            = fromGregorian 2023 01 01
+deliveryDateOf "H"            = fromGregorian 2023 01 01
 
 main :: IO ()
 main = do
