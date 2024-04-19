@@ -169,9 +169,12 @@ deliveryDateOf "H"            = fromGregorian 2023 01 01
 main :: IO ()
 main = do
   [loc] <- getArgs
+  --Labeled (Choreo IO) BS ((BS ! (FromBuyer ! Maybe Day)) @ "buyer")
   case loc of
     "buyer"  -> runChoreography cfg (runLabeled bookseller) "buyer"
     "seller" -> runChoreography cfg (runLabeled bookseller) "seller"
+  --Labeled (Choreo IO) BS ((BS ! (FromBuyer ! Maybe Day)) @ "buyer")
+  --Labeled (Choreo IO) ABC ((ABC ! Int)  @ "client")
   return ()
   where
     cfg = mkHttpConfig [ ("buyer",  ("localhost", 4242))

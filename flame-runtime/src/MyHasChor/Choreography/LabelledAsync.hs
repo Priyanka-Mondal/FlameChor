@@ -10,6 +10,8 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ExplicitNamespaces #-}
+{-# LANGUAGE GADTs #-}
+
 --{-# LANGUAGE InstanceSigs #-}
 {-# OPTIONS_GHC -fplugin Flame.Solver #-}
 
@@ -21,6 +23,7 @@ import MyHasChor.Choreography.ChoreoAsync
 import Control.Concurrent.Async
 import Control.Monad.Identity (Identity(..), runIdentity, void)
 import MyHasChor.Choreography.Location
+import Control.Monad.IO.Class (liftIO)
 import Data.Proxy
 --import Data.Time
 import System.Environment
@@ -28,6 +31,10 @@ import System.Environment
 import "freer-simple" Control.Monad.Freer as S
 --import "HasChor" Control.Monad.Freer (interpFreer, toFreer)
 import MyHasChor.Control.Monad.Freer
+
+--import Control.Concurrent.Async (Async, wait)
+import Control.Monad.IO.Class (MonadIO, liftIO)
+
 import Flame.Principals
 --import Flame.TCB.Freer.IFC (Seal (..))
 import Flame.TCB.Freer.IFC
@@ -48,6 +55,7 @@ import MyHasChor.Choreography.Network.Local (LocalConfig(locToBuf))
 import MyHasChor.Choreography.Labelled
 import MyHasChor.Choreography.Flaqr(compare)
 import Flame.Runtime.Crypto.KeyMap (adjustKey)
+import Data.Time.Format.ISO8601 (yearFormat)
 
 
 labelInAsync :: l!(Async a @ loc) -> (l! Async a) @ loc
@@ -73,7 +81,7 @@ labelIn' e = labelIn <$> e  --e >>= (\lal -> wrap <$> use lal (protect.unwrap))
 wrapLabeled :: forall pc m a loc. Monad m => Labeled m pc a -> Labeled m pc (a @ loc)
 wrapLabeled = Prelude.fmap wrap --- ???
 
-labelOutAsync :: Async (l!a) @ loc -> l!(Async a @ loc)
+labelOutAsync :: forall l a loc. Async (l!a) @ loc -> l!(Async a @ loc)
 labelOutAsync (Wrap as) = Seal (Wrap $ Prelude.fmap (\(Seal a) -> a) as)
 labelOutAsync Empty     = Seal Empty
 
@@ -121,16 +129,23 @@ sLocallyAsync (pc, loc, loc_pc, l) k = do
   result <- restrict pc (\_ -> locally (sym loc) (\un -> runLabeled $ k un))
   return $ labelIn (joinOut result) --labelIn
 
+labelInA :: l!(Async a @ loc) -> Async (l!a) @ loc
+labelInA (Seal asl) = case asl of
+                        Wrap as -> Wrap $ Prelude.fmap Seal as
+                        Empty   -> Empty
+
 (~>:) :: forall a loc loc' pc l m. (Show a, Read a, KnownSymbol loc, KnownSymbol loc', Show (l!a), Read (l!a)) --, (N loc') ≽ (C pc), (N loc) ≽ (I pc))
      => (Proxy loc, SPrin pc, SPrin l, (l!a) @ loc)  
      -> Proxy loc'
-     -> Labeled (Choreo m) pc ((pc ! Async (l ! a)) @ loc')
+     -> Labeled (Choreo m) pc (Async (pc!(l!a)) @ loc')
 (~>:) (loc, pc, l, la) loc' = do
   result <- restrict pc (\_ -> (loc, la) ~> loc')
-  return $ labelIn result 
+  return $ labelInA result 
 
--- swait :: Async (l ! a) -> ()-> l ! a 
--- swait = do 
+-- swait :: Async (l ! a) -> l ! Async a 
+-- swait y = do
+--   z <- wait y
+--   bind z (\x -> label $ async x)
   
 
 -- | Conditionally execute choreographies based on a located value.
@@ -149,11 +164,34 @@ strGetLine  pc = restrict pc (\_ -> readLn)
 --(l ⊑ l') =>
 --(l ! a) -> (a -> l' ! b) -> l' ! b
 
--- asyncWait :: forall a b l l' loc. 
---   (l ! Async (l' ! a)) @ loc -> (Async (l' ! a) @ loc -> Async (l' ! a)) 
---                                                   -> l ! (l' ! a) @ loc
--- asyncWait lal un = wrap $ bind (un lal) (\x -> do 
---                                                       y <- wait x
---                                                       label y
---                                                       )
-                                
+-- unwrapAsync :: Async (l ! a) -> l! (Async a)
+-- unwrapAsync a = 
+
+
+-- data LabeledAsync l a where
+--   LAsync :: Async (l ! a) -> LabeledAsync l a
+
+-- -- | Wait for the asynchronous computation to complete and return the result.
+-- waitL :: MonadIO m => LabeledAsync l a -> m a
+-- waitL (LAsync async) = liftIO $ wait async
+
+-- -- | Create a labeled asynchronous computation from an 'Async' computation.
+-- asyncL :: Async a -> LabeledAsync l a
+-- asyncL = LAsync 
+
+-- asyncWait :: forall a b l l' l'' loc. ((l ⊑ l'', l' ⊑ l'')) =>
+--   Async (l ! a) @ loc -> (Async (l ! a) @ loc -> Async (l ! a)) 
+--                                                   -> (l ! a)
+-- asyncWait lal un = do 
+--   let z = un lal
+--   y <- (\_ -> wait z) 
+--   return y
+
+--   --return $ join y
+  
+  
+-- --   bind (un lal) (\x -> do 
+-- --             label $ bind (labelOutAsync (wrap x)) (\y -> do 
+-- --                                                   z <- wait (un y)
+-- --                                                   label z
+-- --                                                  ))

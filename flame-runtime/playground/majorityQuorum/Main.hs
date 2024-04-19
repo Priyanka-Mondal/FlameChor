@@ -25,7 +25,8 @@ import Prelude hiding (compare)
 --import Choreography.ChoreoAsync (cond)
 import Flame.Principals
 import Flame.TCB.Freer.IFC
-    ( type (!),
+
+    ( type (!)(..),
       Labeled,
       bind,
       label,
@@ -37,6 +38,7 @@ import Flame.TCB.Freer.IFC
       relabel' )
 import Flame.Assert
 import GHC.TypeLits (KnownSymbol)
+import Data.Text.Internal.Fusion.Types (CC)
 
 
 -- locA :: Proxy "A"
@@ -67,11 +69,20 @@ type Client = N "client"
 client :: SPrin Client
 client = SName (Proxy :: Proxy "client")
 
-type ABC = (A \/ B \/ D \/ Client) 
+
+type AB = A \/ B
+type BC = AB \/ D
+type ABC = A \/ Client 
    --deriving (Show)
 
+ab :: SPrin AB
+ab = locA *\/ locB
+
+bc :: SPrin BC
+bc = ab *\/ locC
+
 abc :: SPrin ABC
-abc = locA *\/ locB *\/ locC *\/ client
+abc = locA *\/ client
 
 type FromA = ABC 
 fromA :: SPrin ABC
@@ -89,10 +100,18 @@ type FromClient = ABC
 fromClient :: SPrin ABC
 fromClient = abc
 
+type FrmClient = Client
+frmClient :: SPrin Client
+frmClient = client
+
 
 safePutStrLn :: forall l a. (Show a, l ⊑ ABC) => l!a 
                       -> Labeled IO ABC (ABC!())
 safePutStrLn =  sPutStrLn  abc
+
+sfePutStrLn :: forall l a. (Show a, l ⊑ Client) => l!a 
+                      -> Labeled IO Client (Client!())
+sfePutStrLn =  sPutStrLn  client
 
 aGetLine :: Labeled IO FromA (FromA ! Int)
 aGetLine = strGetLine fromA
@@ -104,41 +123,87 @@ cGetLine :: Labeled IO FromC (FromC ! Int)
 cGetLine = strGetLine fromB
 --------------
 --------------
+labelInA' :: l!(Async a @ loc) -> Async (l!a) @ loc
+labelInA' (Seal asl) = case asl of
+                        Wrap as -> Wrap $ Prelude.fmap Seal as
+                        Empty   -> Empty
 
-majorityQuorum :: Labeled (Choreo IO) ABC ((ABC ! (FromClient ! Int)) @ "client")
+joinLoc :: forall l l' l'' loc a. (l ⊑ l'', l' ⊑ l'') => (l!(l'!a)) @ loc -> (l''!a) @ loc
+joinLoc (Wrap lla) = Wrap $ join lla
+joinLoc Empty      = Empty
+
+labelin' :: l!(a @ loc) -> (l!a) @ loc
+labelin' (Seal asl) = case asl of
+                        Wrap as -> Wrap $ Seal as
+                        Empty   -> Empty
+
+labelIn'' :: l!(a @ loc) -> (l!a) @ loc
+labelIn'' (Seal asl) = case asl of
+                        Wrap as -> Wrap $ Seal as
+                        Empty   -> Empty
+-- socally :: forall pc loc_pc l loc m a. (Monad m, KnownSymbol loc, pc ⊑ loc_pc, pc ⊑ l)
+--                => (SPrin pc, SPrin (N loc), SPrin loc_pc, SPrin l)
+--                -> (Unwrap loc -> Labeled m loc_pc (l!a))
+--                -> Labeled (Choreo m) pc ((l!a) @ loc)
+-- socally (pc, loc, loc_pc, l) k = do
+--   result <- restrict pc (\_ -> locally (sym loc) (\un -> runLabeled $ k un))
+--   return $ joinLoc (labelIn'' result)
+
+majorityQuorum :: Labeled (Choreo IO) Client ((Client ! ())  @ "client")
 majorityQuorum = do 
  
-  title <-(abc, client, abc, fromClient) `sLocally` (\_ -> do
-             safePutStrLn @ABC $ label "at client$")
+  sLocally @Client @_ @Client @_ (client, client, client, frmClient) (\_ -> do
+             sfePutStrLn @Client $ label @Client "at client$")
 
   --client `locally` \_ -> do putStrLn "at client$"
 
-  a <- (abc, locA, abc, fromA) `sLocally` (\_ -> do
-             safePutStrLn @ABC $ label "Enter value at A::"
-             relabel' abc aGetLine)
+  -- a <- (abc, locA, abc, fromA) `sLocally` (\_ -> do
+  --            safePutStrLn @ABC $ label "Enter value at A::"
+  --            relabel' abc aGetLine)
 
-  -- a <- locA `locally` \_ -> do
-  --     putStrLn "Enter value at A::"
-  --     readLn :: IO Int
+  -- b <- (abc, locB, abc, fromB) `sLocally` (\_ -> do
+  --            safePutStrLn @ABC $ label "Enter value at B::"
+  --            relabel' abc bGetLine)
 
-  b <- (abc, locB, abc, fromB) `sLocally` (\_ -> do
-             safePutStrLn @ABC $ label "Enter value at B::"
-             relabel' abc bGetLine)
-  -- b <- locB `locally` \_ -> do
-  --     putStrLn "Enter value at B::"
-  --     readLn :: IO Int
-  c <- (abc, locC, abc, fromC) `sLocally` (\_ -> do
-             safePutStrLn @ABC $ label "Enter value at C::"
-             relabel' abc cGetLine)
-  -- c <- locC `locally` \_ -> do
-  --     putStrLn "Enter value at C::"
-  --     readLn :: IO Int
-  a' <- (sym locA, abc, fromA, a) ~>: sym client
-  b' <- (sym locB, abc, fromB, b) ~>: sym client
-  c' <- (sym locC, abc, fromC, c) ~>: sym client
- 
+  -- c <- (abc, locC, abc, fromC) `sLocally` (\_ -> do
+  --            safePutStrLn @ABC $ label "Enter value at C::"
+  --            relabel' abc cGetLine)
+
+  --a' <- (sym locA, abc, fromA, a) ~>: sym client
+  -- b' <- (sym locB, abc, fromB, b) ~>: sym client
+  -- c' <- (sym locC, abc, fromC, c) ~>: sym client
+
+  -- cc <- (abc, client, abc, abc) `sLocally` \un -> do
+  --             title'' <- join @ABC . join @ABC <$> restrict @ABC abc (\_ -> wait (un a'))
+  --             use @_ @ABC  title'' (protect @_ @ABC. times3)
+
+  -- (abc, client, abc, fromClient) `sLocally` \un -> do
+  --             let c'' = un c
+  --             use c'' (\y -> protect (do 
+  --                 let r = restrict abc (\_ -> wait y)
+  --                 let title'' = join <$> r
+  --                 t <- title''
+  --                 use t (protect . times3)))
+  -- clientc <- (abc, client, abc, fromClient) `sLocally` \un -> do
+  --     (c'' :: ABC!Int) <- join . join @_ @_ @ABC <$> restrict @_ @_ @ABC abc (\_ -> wait (un c'))
+  --     use @_ @_ @_ @ABC c'' (protect . times3)
+   
+
+  -- (abc, client, abc, fromClient) `sLocally` (\un -> do
+  --            safePutStrLn @ABC $ label $ un cc)
+  
+  -- (abc, client, abc, fromClient) `sLocally` \un -> do
+  --     (c'' :: ABC!Int) <- join . join @_ @_ @ABC <$> restrict @_ @_ @ABC abc (\_ -> wait (un a'))
+  --     use @_ @_ @_ @ABC c'' (protect . times3)
+
+  -- (abc, client, abc, abc) `sLocally` \un -> do
+  --             title'' <- join . join <$> restrict abc (\_ -> wait (un c'))
+  --             use title'' (protect . times3)
+
+  --return price
+
   -- price <- (abc, client, abc, fromClient) `sLocally` (\un -> do
-  --   use @_ @_ @_ @ABC ((joinOutAsync @ABC @ABC @ABC @Int @"client" (un a'))) (\t -> do
+  --   use @_ @_ @_ @ABC (join (asyncWait a')) (\t -> do
   --                                     z <- wait t
   --                                     protect $ times3 t))
   {--
@@ -184,7 +249,13 @@ majorityQuorum = do
 majorityQuorumMain :: IO ()
 majorityQuorumMain = do
   [loc] <- getArgs
-  void $ runChoreography cfg majorityQuorum loc
+  -- Labeled (Choreo IO) ABC ((ABC ! Int)  @ "client")
+  case loc of
+    "client" -> runChoreography cfg (runLabeled  majorityQuorum) "client"
+    "A" -> runChoreography cfg (runLabeled  majorityQuorum) "client"
+    "B" -> runChoreography cfg (runLabeled  majorityQuorum) "client"
+    "C" -> runChoreography cfg (runLabeled  majorityQuorum) "client"
+  return ()
   where
     cfg = mkHttpConfig [ ("A", ("localhost", 4240))
                        , ("B", ("localhost", 4341))

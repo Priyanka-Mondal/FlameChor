@@ -114,7 +114,7 @@ combinations n (x:xs) = [ x:rest | rest <- combinations (n-1) xs ] ++ combinatio
 
 -- compare between i elements from the list of given async values
 compare_ :: forall a. (Ord a, HasFail a) => [Async a] -> Int -> IO ([IO (Async a)])
-compare_ xs i = return ((map comparec) com)
+compare_ xs i = return (map comparec com) --was ((map comparec) com) then hlint gave error 
   where 
     com = combinations i xs
 
