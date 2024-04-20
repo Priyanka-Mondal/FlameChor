@@ -20,3 +20,6 @@ cradle:
 
     - path: "playground/bookseller-2/Main.hs"
       component: "flame-runtime:exe:bookseller-2"
+
+    - path: "playground/availFlame/Main.hs"
+      component: "flame-runtime:exe:availf"

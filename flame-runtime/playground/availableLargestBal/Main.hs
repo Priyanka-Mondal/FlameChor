@@ -1,15 +1,23 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE LambdaCase     #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE PartialTypeSignatures #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE PostfixOperators, TypeOperators #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RankNTypes #-}
+
 
 module Main where
 
-import Choreography.Location
-import Choreography.NetworkAsync
-import Choreography.NetworkAsync.Http
-import Choreography.ChoreoAsync
+import MyHasChor.Choreography.Location
+import MyHasChor.Choreography.NetworkAsync
+import MyHasChor.Choreography.NetworkAsync.Http
+import MyHasChor.Choreography.ChoreoAsync
 import Control.Concurrent.Async
-import Choreography.Flaqr
+import MyHasChor.Choreography.Flaqr
 import System.Environment
 import System.Timeout 
 import Data.Proxy
@@ -63,26 +71,39 @@ availLarBal = do
   bal1' <- (b1, bal1) ~> client
   bal2' <- (b2, bal2) ~> client
   availBal <- client `locally` \un -> do select (un bal1') (un bal2') 
+  
+  client `locally` \un -> do 
+    a <- wait $ un availBal
+    putStrLn $ "availBal:" ++ show a
+    
   larAv <- client `locally` \un -> do getLargest (un bal1') (un bal2')
+
+  client `locally` \un -> do 
+    a <- wait $ un larAv
+    putStrLn $ "larAv:" ++ show a
+    
   largestAvailBal <- client `locally` \un -> select (un larAv) (un availBal) 
+
+  client `locally` \un -> do 
+    a <- wait $ un largestAvailBal
+    putStrLn $ "largestAvailBal:" ++ show a
+    
   decision <- client `locally` \un -> do
      a <- wait (un largestAvailBal)
-     putStrLn (show a)           
+     print a           
      return (a < 100)
-
- 
 
   cond (client, decision) \case
          a -> do
            b1 `locally` \_ -> do 
                               a' <- wait a
-                              putStrLn $ "less than 101 b1:" ++ (show a')
+                              putStrLn $ "less than 100 @b1:" ++ show a'
            b2 `locally` \_ -> do 
                               a' <- wait a
-                              putStrLn $ "less than 101 b2:" ++ (show a')
+                              putStrLn $ "less than 100 @b2:" ++ show a'
            client `locally` \_ -> do 
                                 a' <- wait a
-                                putStrLn $ "less than 101 b1:" ++ (show a') 
+                                putStrLn $ "less than 100 @client:" ++ show a'
                                 getLine 
    
 
@@ -118,7 +139,7 @@ threeByFiveQuorum = do
   d' <- (locD, d) ~> client
   e' <- (locE, e) ~> client
 
-  ab <- client `locally` \un -> do compare_ [(un a'), (un b'), (un c'), (un d'), (un e')] 3
+  ab <- client `locally` \un -> do compare_ [un a', un b', un c', un d', un e'] 3
   abc <- client `locally` \un -> do select_ (un ab)
   
   client `locally` \un -> do

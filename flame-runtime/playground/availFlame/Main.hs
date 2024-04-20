@@ -28,48 +28,48 @@ import GHC.TypeLits
 import Flame.Principals
 import Flame.TCB.Freer.IFC
 
-type Buyer = N "buyer"
-buyer :: SPrin Buyer
-buyer = SName (Proxy :: Proxy "buyer")
+type Client = N "client"
+client :: SPrin Client
+client = SName (Proxy :: Proxy "client")
 
-type Seller = N "seller"
-seller :: SPrin Seller
-seller = SName (Proxy :: Proxy "seller")
+type B1 = N "b1"
+b1 :: SPrin B1
+b1 = SName (Proxy :: Proxy "b1")
 
-type Seller2 = N "seller2"
-seller2 :: SPrin Seller2
-seller2 = SName (Proxy :: Proxy "seller2")
+type B2 = N "b2"
+b2 :: SPrin B2
+b2 = SName (Proxy :: Proxy "b2")
 
--- type BS = (Buyer \/ Seller)
+-- type BS = (Client \/ B1)
 
-type BS = ((Buyer \/ Seller) \/ Seller2)
+type BS = ((Client \/ B1) \/ B2)
 
 -- bs :: SPrin BS
--- bs = buyer *\/ seller
+-- bs = client *\/ b1
 
 bs :: SPrin BS
-bs = ((buyer *\/ seller) *\/ seller2)
+bs = ((client *\/ b1) *\/ b2)
 
 
--- type FromBuyer = BS
--- fromBuyer :: SPrin BS
--- fromBuyer = bs
+-- type FromClient = BS
+-- fromClient :: SPrin BS
+-- fromClient = bs
 
--- type FromSeller = BS
--- fromSeller :: SPrin BS
--- fromSeller = bs
+-- type FromB1 = BS
+-- fromB1 :: SPrin BS
+-- fromB1 = bs
 
-type FromBuyer = BS
-fromBuyer :: SPrin BS
-fromBuyer = bs
+type FromClient = BS
+fromClient :: SPrin BS
+fromClient = bs
 
-type FromSeller = BS
-fromSeller :: SPrin BS
-fromSeller = bs
+type FromB1 = BS
+fromB1 :: SPrin BS
+fromB1 = bs
 
-type FromSeller2 = BS
-fromSeller2 :: SPrin BS
-fromSeller2 = bs
+type FromB2 = BS
+fromB2 :: SPrin BS
+fromB2 = bs
 
 
 
@@ -156,19 +156,21 @@ sCond (l, pc, la) c = restrict pc $ \_ -> cond' (l, la) (\un -> runLabeled $ c u
 sPutStrLn :: Show a => SPrin pc -> (l ⊑ pc) => l!a -> Labeled IO pc (pc!())
 sPutStrLn pc la = restrict pc (\open -> print (open la))
 
-sGetLine :: SPrin pc -> Labeled IO pc (pc!String)
-sGetLine pc = restrict pc (\_ -> getLine)
+sGetLine :: SPrin pc -> Labeled IO pc (pc!Int)
+sGetLine pc = restrict pc (\_ -> readLn)
 
 safePutStrLn :: forall l a. (Show a, l ⊑ BS) => l!a
                       -> Labeled IO BS (BS!())
 safePutStrLn =  sPutStrLn bs
 
-buyerGetLine :: Labeled IO FromBuyer (FromBuyer!String)
-buyerGetLine = sGetLine fromBuyer
+clientGetLine :: Labeled IO FromClient (FromClient!Int)
+clientGetLine = sGetLine fromClient
 
-sellerGetLine :: Labeled IO FromSeller (FromSeller!String)
-sellerGetLine = sGetLine fromSeller
+b1GetLine :: Labeled IO FromB1 (FromB1!Int)
+b1GetLine = sGetLine fromB1
 
+b2GetLine :: Labeled IO FromB2 (FromB2!Int)
+b2GetLine = sGetLine fromB2
 -- instance HasFail (BS!a) where
 --   failVal = ()
 
@@ -240,105 +242,80 @@ bsSelect a b = do
           Nothing -> async (return (Seal failVal))
 
 
--- | `bookseller` is a choreography that implements the bookseller protocol.
-bookseller :: Labeled (Choreo IO) BS ((BS ! (String)) @ "seller")
-bookseller = do
-  -- the buyer node prompts the user to enter the title of the book to buy
-  title <- (bs, buyer, bs, fromBuyer) `sLocally` (\_ -> do
-             safePutStrLn @BS $ label "Enter the title of the book to buy"
-             relabel' bs buyerGetLine)
+-- | `bookb1` is a choreography that implements the bookb1 protocol.
+bookb1 :: Labeled (Choreo IO) BS ((BS ! (Int)) @ "client")
+bookb1 = do
+  (bs, client, bs, fromClient) `sLocally` (\_ -> do
+             safePutStrLn @BS $ label "Client waiting to get the largest balance:")
+           
+  bal1 <- (bs, b1, bs, fromB1) `sLocally` (\_ -> do
+             safePutStrLn @BS $ label "Enter balance at b1:"
+             relabel' bs b1GetLine)
 
-  -- the buyer sends the title to the seller
-  title' <- (sym buyer, bs, fromBuyer, title) ~>: sym seller
-  title2' <- (sym buyer, bs, fromBuyer, title) ~>: sym seller2
+  bal2 <- (bs, b2, bs, fromB2) `sLocally` (\_ -> do
+             safePutStrLn @BS $ label "Enter balance at b2:"
+             relabel' bs b2GetLine)
 
-    -- the seller checks the price of the book
-  price <- (bs, seller, bs, fromSeller) `sLocally` \un -> do
-              title'' <- join . join @_ @_ @BS <$> restrict @_ @_ @BS bs (\_ -> wait (un title'))
-              use title'' (protect @_ @BS. priceOf)
-  
-  price2 <- (bs, seller2, bs, fromSeller2) `sLocally` \un -> do
-              title'' <- join . join @_ @_ @BS <$> restrict @_ @_ @BS bs (\_ -> wait (un title2'))
-              use title'' (protect @_ @BS. priceOf2)
+  bal1' <- (sym b1, bs, fromB1, bal1) ~>: sym client
+  bal2' <- (sym b2, bs, fromB2, bal2) ~>: sym client
 
-  
-  -- the seller sends back the price of the book to the buyer
-  price' <- (sym seller, bs, fromSeller, price) ~>: sym buyer
-  price2' <- (sym seller2, bs, fromSeller2, price2) ~>: sym buyer
-
-  (bs, seller, bs, fromSeller) `sLocally` \un -> do
-                 (t1 :: BS!String) <- join . join @_ @_ @BS <$> restrict @_ @_ @BS bs (\_ -> wait (un title'))
-                 safePutStrLn @BS $ t1
-                 --use t'' (protect @_ @BS. priceOf)
-
-  (bs, seller2, bs, fromSeller2) `sLocally` \un -> do
-                 (t1 :: BS!String) <- join . join @_ @_ @BS <$> restrict @_ @_ @BS bs (\_ -> wait (un title2'))
-                 safePutStrLn @BS $ t1
-
-  -- the buyer decides whether to buy the book or not
-  -- large <- (bs, buyer, bs, fromBuyer) `sLocally` \un -> do
-  --            (price1 :: BS! Int) <- join . join @_ @_ @BS <$>  restrict @_ @_ @BS bs (\_ -> (wait (un price')))
-  --            (price2 :: BS! Int) <- join . join @_ @_ @BS <$>  restrict @_ @_ @BS bs (\_ -> (wait (un price2')))
-  --            use @_ @_ @_ @BS price1 (\p -> use @_ @_ @_ @BS price2 (\p2 -> protect ((p>p2))))
-
-  largest <- (bs, buyer, bs, fromBuyer) `sLocally` \un -> do
+  largest <- (bs, client, bs, fromClient) `sLocally` \un -> do
           restrict @_ @_ @BS bs (\_ -> (do 
-            largest @BS @BS @BS (un price') (un price2') ))
+            largest @BS @BS @BS (un bal1') (un bal2') ))
           
-          
-  available <- (bs, buyer, bs, fromBuyer) `sLocally` \un -> do
+  available <- (bs, client, bs, fromClient) `sLocally` \un -> do
        restrict @_ @_ @BS bs (\_ -> (do 
-         sSelect @BS @BS @BS (un price2') (un price')))
-       -- wait s))
+         sSelect @BS @BS @BS (un bal1') (un bal2')))
   
-  larAvail <- (bs, buyer, bs, fromBuyer) `sLocally` \un -> do
-       --restrict @BS @_ @BS bs (\_ -> (do 
-         use @_ @BS @BS @BS (un largest) (\p -> use @_ @BS @BS @BS (un available) (\p2 -> --protect
-            join. join @BS @BS @BS <$> restrict @_ @_ @BS bs (\_ ->
-                   (do 
-                      s <- sSelect @BS @BS @BS (p) (p2)
-                      (wait s)))))--))
-        --s <- sSelect @BS @BS @BS (un largest) (un available)
-        --wait s))
+  larAvail <- (bs, client, bs, fromClient) `sLocally` \un -> do
+    use @_ @BS @BS @BS (un largest) (\lar -> use @_ @BS @BS @BS (un available) (\avl -> --protect
+      join. join @BS @BS @BS <$> restrict @_ @_ @BS bs (\_ ->
+              (do 
+                s <- sSelect @BS @BS @BS (lar) (avl)
+                (wait s)))))--))
+ 
+  (bs, b2, bs, fromB2) `sLocally` (\un -> do
+             relabel' bs b2GetLine)
+  
+  (bs, b1, bs, fromB1) `sLocally` (\un -> do
+             relabel' bs b1GetLine)
 
-  (bs, buyer, bs, fromBuyer) `sLocally` \un -> do
-                                  safePutStrLn @BS $ un larAvail
+  (bs, client, bs, fromClient) `sLocally` \un -> do
+              safePutStrLn @BS $ label "largest available balance:"
+              safePutStrLn @BS $ (un larAvail)
+              relabel' bs clientGetLine
+ 
   
-  (bs, seller2, bs, fromSeller2) `sLocally` (\un -> do
-             safePutStrLn @BS $ un price2
-             relabel' bs sellerGetLine)
+  -- if the client decides to buy the book, the b1 sends the delivery date to the client
   
-  (bs, seller, bs, fromSeller) `sLocally` (\un -> do
-             safePutStrLn @BS $ un price
-             relabel' bs sellerGetLine)
-  
-  -- if the buyer decides to buy the book, the seller sends the delivery date to the buyer
-  
-budget :: Int
-budget = 100
+-- budget :: Int
+-- budget = 100
 
-priceOf :: String -> Int
-priceOf "T" = 80
-priceOf "H"            = 120
+-- priceOf :: String -> Int
+-- priceOf "T" = 80
+-- priceOf "H"            = 120
 
-priceOf2 :: String -> Int
-priceOf2 "T" = 90
-priceOf2 "H"            = 100
+-- priceOf2 :: String -> Int
+-- priceOf2 "T" = 90
+-- priceOf2 "H"            = 100
 
-deliveryDateOf :: String -> Day
-deliveryDateOf "T" = fromGregorian 2022 12 19
-deliveryDateOf "H" = fromGregorian 2023 01 01
+-- largest :: (Int , Int) -> Int
+-- largest (a ,b) = if (a > b) then a else b
+
+-- deliveryDateOf :: String -> Day
+-- deliveryDateOf "T" = fromGregorian 2022 12 19
+-- deliveryDateOf "H" = fromGregorian 2023 01 01
 
 main :: IO ()
 main = do
   [loc] <- getArgs
   case loc of
-    "buyer"  -> runChoreography cfg (runLabeled bookseller) "buyer"
-    "seller" -> runChoreography cfg (runLabeled bookseller) "seller"
-    "seller2" -> runChoreography cfg (runLabeled bookseller) "seller2"
+    "client"  -> runChoreography cfg (runLabeled bookb1) "client"
+    "b1" -> runChoreography cfg (runLabeled bookb1) "b1"
+    "b2" -> runChoreography cfg (runLabeled bookb1) "b2"
   return ()
   where
-    cfg = mkHttpConfig [ ("buyer",  ("localhost", 4242))
-                       , ("seller", ("localhost", 4343))
-                       , ("seller2", ("localhost", 4344))
+    cfg = mkHttpConfig [ ("client",  ("localhost", 4242))
+                       , ("b1", ("localhost", 4343))
+                       , ("b2", ("localhost", 4344))
                        ]

@@ -45,7 +45,7 @@ instance HasFail String where
 
 
 time :: Int 
-time = 1000000
+time = 10000000
 
 --simple select between 2 values
 select :: (HasFail a, Eq a) => Async a -> Async a -> IO (Async a)

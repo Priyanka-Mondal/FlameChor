@@ -129,6 +129,25 @@ executable bookseller-2
         , flame-runtime
         --, HasChor
 
+executable availf
+    hs-source-dirs:   playground/availFlame
+    main-is:          Main.hs
+    default-language: GHC2021
+    build-depends:
+        , flame-plugin
+        , constraints
+        , reflection
+        , containers
+        , mtl
+        , text
+        , base    >= 4.16 && < 4.20
+        , time    >= 1.11 && < 1.13
+        , async >= 2.2  && < 2.3
+        , freer-simple
+        , flame-runtime
+        --, HasChor
+
+
 
 --{ executable async
     -- hs-source-dirs:   playground/async
@@ -148,23 +167,23 @@ executable bookseller-2
 --         , HasChor
 --         , flame-runtime
 
--- executable avail
---     hs-source-dirs:   playground/availableLargestBal
---     main-is:          Main.hs
---     default-language: GHC2021
---     build-depends:
---         , flame-plugin
---         , constraints
---         , reflection
---         , containers
---         , mtl
---         , text
---         , base    >= 4.16 && < 4.20
---         , time    >= 1.11 && < 1.13
---         , async >= 2.2  && < 2.3
---         , freer-simple
---         , HasChor
---         , flame-runtime
+executable avail
+    hs-source-dirs:   playground/availableLargestBal
+    main-is:          Main.hs
+    default-language: GHC2021
+    build-depends:
+        , flame-plugin
+        , constraints
+        , reflection
+        , containers
+        , mtl
+        , text
+        , base    >= 4.16 && < 4.20
+        , time    >= 1.11 && < 1.13
+        , async >= 2.2  && < 2.3
+        , freer-simple
+        --, HasChor
+        , flame-runtime
 
 executable mq
     hs-source-dirs:   playground/majorityQuorum
