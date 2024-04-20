@@ -121,11 +121,6 @@ joinLoc :: forall l l' l'' loc a. (l ⊑ l'', l' ⊑ l'') => (l!(l'!a)) @ loc ->
 joinLoc (Wrap lla) = Wrap $ join lla
 joinLoc Empty      = Empty
 
--- joinLoc' :: forall l l' l'' loc a. (l ⊑ l') => (l!a) @ loc -> (l'!a) @ loc
--- joinLoc' = joinLoc
-
---TODO: Async it up
--- | Perform a local computation at a given location.
 sLocally :: forall pc loc_pc l loc m a. (Monad m, KnownSymbol loc, pc ⊑ loc_pc, pc ⊑ l)
                => (SPrin pc, SPrin (N loc), SPrin loc_pc, SPrin l)
                -> (Unwrap loc -> Labeled m loc_pc (l!a))
@@ -189,8 +184,6 @@ largest a b = do
       _ -> async (return $ Seal (Seal failVal))
 
                             
-
-
 sSelect :: forall l l' l'' a. (HasFail a, Eq a, l ⊑ l'', l' ⊑ l'', Show a) => 
     Async (l!(l'!a)) -> Async (l!(l'!a)) -> IO (Async (l!(l'!a)))
 sSelect a b = do
@@ -217,34 +210,8 @@ sSelect a b = do
           Nothing -> do 
             async (return (Seal (Seal failVal)))
 
-bsSelect :: (HasFail a, Eq a, BS ⊑ BS) => 
-    Async (BS!(BS!a)) -> Async (BS!(BS!a)) -> IO (Async (BS!a))
-bsSelect a b = do
-    a' <- timeout time (wait a)
-    case a' of 
-      (Just e) -> do 
-        let e1 = join e
-        case e1 of 
-          Seal c | c /= failVal -> async (return e1)
-          _ -> do 
-                b' <- timeout time (wait b)
-                case b' of 
-                  (Just e) -> do
-                    let b1 = join e
-                    async (return b1) 
-                  Nothing -> async (return (Seal failVal))
-      _ -> do
-         b' <- timeout time (wait b)
-         case b' of 
-          (Just e) -> do 
-            let b1' = join e
-            async( return b1')
-          Nothing -> async (return (Seal failVal))
-
-
--- | `bookb1` is a choreography that implements the bookb1 protocol.
-bookb1 :: Labeled (Choreo IO) BS ((BS ! (Int)) @ "client")
-bookb1 = do
+largestAvailableBalance :: Labeled (Choreo IO) BS ((BS ! (Int)) @ "client")
+largestAvailableBalance = do
   (bs, client, bs, fromClient) `sLocally` (\_ -> do
              safePutStrLn @BS $ label "Client waiting to get the largest balance:")
            
@@ -272,8 +239,8 @@ bookb1 = do
       join. join @BS @BS @BS <$> restrict @_ @_ @BS bs (\_ ->
               (do 
                 s <- sSelect @BS @BS @BS (lar) (avl)
-                (wait s)))))--))
- 
+                (wait s)))))
+
   (bs, b2, bs, fromB2) `sLocally` (\un -> do
              relabel' bs b2GetLine)
   
@@ -285,34 +252,13 @@ bookb1 = do
               safePutStrLn @BS $ (un larAvail)
               relabel' bs clientGetLine
  
-  
-  -- if the client decides to buy the book, the b1 sends the delivery date to the client
-  
--- budget :: Int
--- budget = 100
-
--- priceOf :: String -> Int
--- priceOf "T" = 80
--- priceOf "H"            = 120
-
--- priceOf2 :: String -> Int
--- priceOf2 "T" = 90
--- priceOf2 "H"            = 100
-
--- largest :: (Int , Int) -> Int
--- largest (a ,b) = if (a > b) then a else b
-
--- deliveryDateOf :: String -> Day
--- deliveryDateOf "T" = fromGregorian 2022 12 19
--- deliveryDateOf "H" = fromGregorian 2023 01 01
-
 main :: IO ()
 main = do
   [loc] <- getArgs
   case loc of
-    "client"  -> runChoreography cfg (runLabeled bookb1) "client"
-    "b1" -> runChoreography cfg (runLabeled bookb1) "b1"
-    "b2" -> runChoreography cfg (runLabeled bookb1) "b2"
+    "client"  -> runChoreography cfg (runLabeled largestAvailableBalance) "client"
+    "b1" -> runChoreography cfg (runLabeled largestAvailableBalance) "b1"
+    "b2" -> runChoreography cfg (runLabeled largestAvailableBalance) "b2"
   return ()
   where
     cfg = mkHttpConfig [ ("client",  ("localhost", 4242))
