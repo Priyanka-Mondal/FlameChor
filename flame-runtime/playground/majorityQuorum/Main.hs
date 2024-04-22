@@ -95,6 +95,9 @@ sPutStrLn pc la = restrict pc (\open -> print (open la))
 sGetLine :: SPrin pc -> Labeled IO pc (pc!Int)
 sGetLine pc = restrict pc (\_ -> readLn)
 
+strGetLine :: SPrin pc -> Labeled IO pc (pc!String)
+strGetLine pc = restrict pc (\_ -> readLn)
+
 safePutStrLn :: forall l a. (Show a, l ⊑ ABC) => l!a 
                       -> Labeled IO ABC (ABC!())
 safePutStrLn =  sPutStrLn  abc
@@ -177,8 +180,9 @@ sLocally (pc, loc, loc_pc, l) k = do
 (~>:) (loc, pc, l, la) loc' = do
   result <- restrict pc (\_ -> (loc, la) ~> loc')
   return $ labelInA result
+-- -1
 
-sSelect :: forall l l' l'' a. (HasFail a, Eq a, l ⊑ l'', l' ⊑ l'', Show a) => 
+sSelect :: forall l l' l'' a. (HasFail a, Eq a, Show a) => 
     Async (l!(l'!a)) -> Async (l!(l'!a)) -> IO (Async (l!(l'!a)))
 sSelect a b = do
     a' <- timeout time (wait a)
@@ -187,22 +191,23 @@ sSelect a b = do
         let e1 = join e
         case e1 of 
           Seal c | c /= failVal -> do 
-            return a --async (return e1)
+            return a 
           _ -> do 
                 b' <- timeout time (wait b)
                 case b' of 
                   (Just e) -> do
                     let b1 = join e
-                    return b -- async (return b1) 
+                    return b 
                   Nothing -> async (return (Seal (Seal failVal)))
       _ -> do -- Nothing i.e. a did not arrive
          b' <- timeout time (wait b)
          case b' of 
           (Just e) -> do 
             let b1' = join e
-            return b -- async( return b1')
+            return b 
           Nothing -> do 
             async (return (Seal (Seal failVal)))
+
 
 sCompare :: forall l l' l'' a. (HasFail a, Eq a, l ⊑ l'', l' ⊑ l'', Show a) => 
     Async (l!(l'!a)) -> Async (l!(l'!a)) -> IO (Async (l!(l'!a)))
@@ -224,8 +229,7 @@ sCompare a b = do
       Nothing -> async (return (Seal (Seal failVal)))
 
 
-
-majorityQuorum :: Labeled (Choreo IO) ABC ((ABC ! Int)  @ "client")
+majorityQuorum :: Labeled (Choreo IO) ABC ((ABC ! ())  @ "client")
 majorityQuorum = do 
  
   (abc, client, abc, fromClient) `sLocally` (\_ -> do
@@ -246,23 +250,34 @@ majorityQuorum = do
   a' <- (sym locA, abc, fromA, a) ~>: sym client
   b' <- (sym locB, abc, fromB, b) ~>: sym client
   c' <- (sym locC, abc, fromC, c) ~>: sym client
-  
+
+  -- sWait on a b c client locally
+  -- ABC ! (Maybe), 
+
+  -- ab <- (abc, client, abc, fromClient) `sLocally` \un -> do
+  --       a'' <- sWait a'
+  --       b'' <- sWait b'
+  --       c'' <- sWait c'  
+  --       sSelect (sCompare a'' b'') (sSelect (sCompare b'' c'') (sCompare ))
+  -- moving restrict inside
+  -- typeclass that abstarcts away the difference between Async and FailOr 
+
   ab <- (abc, client, abc, fromClient) `sLocally` \un -> do
        restrict @_ @_ @ABC abc (\_ -> (do 
-         sCompare @ABC @ABC @ABC (un a') (un b')))
+         sCompare @_ @_ @ABC (un a') (un b')))
 
   bc <- (abc, client, abc, fromClient) `sLocally` \un -> do
        restrict @_ @_ @ABC abc (\_ -> (do 
-         sCompare @ABC @ABC @ABC (un b') (un c')))
+         sCompare @_ @_ @ABC (un b') (un c')))
 
   ca <- (abc, client, abc, fromClient) `sLocally` \un -> do
        restrict @_ @_ @ABC abc (\_ -> (do 
-         sCompare @ABC @ABC @ABC (un c') (un a')))
+         sCompare @_ @_ @ABC (un c') (un a')))
 
   abc' <- (abc, client, abc, fromClient) `sLocally` \un -> do
     use @_ @ABC @ABC @ABC (un ab) (\ab -> use @_ @ABC @ABC @ABC (un bc) (\bc -> 
       restrict @_ @_ @ABC abc (\_ -> do
-              ( sSelect @ABC @ABC @ABC (ab) (bc)
+              (sSelect @ABC @ABC @ABC (ab) (bc)
                 )))) 
 
   con <- (abc, client, abc, fromClient) `sLocally` \un -> do
@@ -281,10 +296,11 @@ majorityQuorum = do
   -- c <- (abc, locC, abc, fromC) `sLocally` (\_ -> do
   --            relabel' abc cGetLine)
 
+  -- sWait 
+
   (abc, client, abc, fromClient) `sLocally` \un -> do
               safePutStrLn @ABC $ label "value after consensus:"
               safePutStrLn @ABC $ (un con)
-              relabel' abc clientGetLine
 
 -- quorumMain :: HttpConfig -> IO () -- this one needs A B and C to run until Client performs wait()
 -- quorumMain cfg = do

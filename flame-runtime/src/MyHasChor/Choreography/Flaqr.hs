@@ -41,7 +41,7 @@ instance HasFail String where
   --failVal :: String
   failVal = "fail"
 
-
+data FailOr a = Success a | Fail 
 
 
 time :: Int 
