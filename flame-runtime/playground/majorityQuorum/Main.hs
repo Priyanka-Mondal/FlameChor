@@ -21,6 +21,7 @@ import MyHasChor.Choreography.NetworkAsync
 import MyHasChor.Choreography.NetworkAsync.Http
 import MyHasChor.Choreography.ChoreoAsync
 import Control.Concurrent.Async
+import Control.Monad.IO.Class
 import MyHasChor.Choreography.Flaqr
 --import MyHasChor.Choreography.LabelledAsync
 import System.Environment
@@ -180,7 +181,33 @@ sLocally (pc, loc, loc_pc, l) k = do
 (~>:) (loc, pc, l, la) loc' = do
   result <- restrict pc (\_ -> (loc, la) ~> loc')
   return $ labelInA result
--- -1
+-- ab <- (client, abc, fromClient) `ccompare` a' b'
+
+ccompare :: forall l l' l'' a loc pc. (HasFail a, Show a, Read a, KnownSymbol loc, Eq a) =>
+  (SPrin (N loc), SPrin pc) ->  (Async (l!(l'!a))) @ loc -> (Async (l!(l'!a))) @ loc
+  -> Labeled (Choreo IO) pc (pc ! (Async (l!(l'!a))) @ loc)
+ccompare (loc, pc) a b = do 
+    labelIn <$> restrict @pc @_ @pc pc (\_ -> do 
+      locally (sym loc) (\un -> do
+                                  let a' = un a
+                                  a'' <- timeout time (wait a')
+                                  case a'' of 
+                                    (Just e) -> do
+                                      let e1 = join e
+                                      case e1 of 
+                                        Seal c | c /= failVal -> do 
+                                          let b' = un b
+                                          b'' <- timeout time (wait b')
+                                          case b'' of 
+                                            (Just e') -> do 
+                                              let e2 = join e' 
+                                              case e2 of 
+                                                Seal d | d /= failVal -> if d == c then return b' else async (return (Seal (Seal failVal)))
+                                            Nothing -> async (return (Seal (Seal failVal)))
+                                        _ -> async (return (Seal (Seal failVal)))
+                                    Nothing -> async (return (Seal (Seal failVal)))
+                        )
+                )
 
 sSelect :: forall l l' l'' a. (HasFail a, Eq a, Show a) => 
     Async (l!(l'!a)) -> Async (l!(l'!a)) -> IO (Async (l!(l'!a)))
@@ -209,6 +236,33 @@ sSelect a b = do
             async (return (Seal (Seal failVal)))
 
 
+
+-- sSelect' :: forall l l' l'' a pc. (HasFail a, Eq a, Show a, pc ⊑ l, pc ⊑ l') => 
+--     (SPrin pc) -> Async (l!(l'!a)) -> Async (l!(l'!a)) -> Labeled IO pc (pc ! Async (l!(l'!a)))
+-- sSelect' pc a b = do
+--     a' <- liftIO $ timeout time (wait a)
+--     case a' of 
+--       (Just e) -> do 
+--         let e1 = join e
+--         case e1 of 
+--           Seal c | c /= failVal -> do 
+--             restrict pc (\_ -> return a) 
+--           _ -> do 
+--                 b' <- liftIO $ timeout time (wait b)
+--                 case b' of 
+--                   (Just e) -> do
+--                     --let b1 = join e
+--                     restrict pc (\_ -> return b)
+--                   Nothing -> restrict pc (\_ -> do async (return (Seal (Seal failVal))))
+--       _ -> do -- Nothing i.e. a did not arrive
+--          b' <- liftIO $ timeout time (wait b)
+--          case b' of 
+--           (Just e) -> do 
+--             --let b1' = join e
+--             restrict pc (\_ -> return b) 
+--           Nothing -> do 
+--             restrict pc (\_ -> async (return (Seal (Seal failVal))))
+
 sCompare :: forall l l' l'' a. (HasFail a, Eq a, l ⊑ l'', l' ⊑ l'', Show a) => 
     Async (l!(l'!a)) -> Async (l!(l'!a)) -> IO (Async (l!(l'!a)))
 sCompare a b = do
@@ -227,6 +281,29 @@ sCompare a b = do
                Nothing -> async (return (Seal (Seal failVal)))
            _ -> async (return (Seal (Seal failVal)))
       Nothing -> async (return (Seal (Seal failVal)))
+
+
+-- sCompare' :: forall l l' l'' a pc. (HasFail a, Eq a, pc ⊑ l, pc ⊑ l', Show a) => 
+--      (SPrin pc) -> Async (l!(l'!a)) -> Async (l!(l'!a)) -> Labeled IO pc (pc ! Async (l!(l'!a)))
+-- sCompare' pc a b = do
+--     a' <- restrict @_ @_ @pc pc (\_ -> timeout time (wait a))
+--     use @_ @_ @_ @_ a' (\a' -> do
+--         case a' of 
+--           (Just e) -> do
+--             let e1 = join @_ @_ @_ e
+--             case e1 of 
+--               Seal c | c /= failVal -> do 
+--                 b' <- restrict @_ @_ @pc pc (\_ -> timeout time (wait b))
+--                 use @_ @_ @_ @_ b' (\b' -> do
+--                   case b' of 
+--                     (Just e') -> do 
+--                       let e2 = join @_ @_ @pc e' 
+--                       case e2 of 
+--                         Seal d | d /= failVal -> if d == c then (restrict pc (\_ -> return b)) else (restrict pc (\_ -> do async (return (Seal (Seal failVal)))))
+--                     Nothing -> restrict pc (\_ -> do async (return (Seal (Seal failVal)))))
+--               _ -> restrict pc  (\_ -> do async (return (Seal (Seal failVal))))
+--           Nothing -> restrict pc  (\_ -> do async (return (Seal (Seal failVal))))
+--                               )
 
 
 majorityQuorum :: Labeled (Choreo IO) ABC ((ABC ! ())  @ "client")
@@ -250,6 +327,8 @@ majorityQuorum = do
   a' <- (sym locA, abc, fromA, a) ~>: sym client
   b' <- (sym locB, abc, fromB, b) ~>: sym client
   c' <- (sym locC, abc, fromC, c) ~>: sym client
+  
+ 
 
   -- sWait on a b c client locally
   -- ABC ! (Maybe), 
@@ -262,18 +341,23 @@ majorityQuorum = do
   -- moving restrict inside
   -- typeclass that abstarcts away the difference between Async and FailOr 
 
-  ab <- (abc, client, abc, fromClient) `sLocally` \un -> do
-       restrict @_ @_ @ABC abc (\_ -> (do 
-         sCompare @_ @_ @ABC (un a') (un b')))
+  -- ab <- (abc, client, abc, fromClient) `sLocally` \un -> do
+  --      restrict @_ @_ @ABC abc (\_ -> (do 
+  --        sCompare @_ @_ @ABC (un a') (un b')))
+  
 
-  bc <- (abc, client, abc, fromClient) `sLocally` \un -> do
-       restrict @_ @_ @ABC abc (\_ -> (do 
-         sCompare @_ @_ @ABC (un b') (un c')))
+  -- bc <- (abc, client, abc, fromClient) `sLocally` \un -> do
+  --      restrict @_ @_ @ABC abc (\_ -> (do 
+  --        sCompare @_ @_ @ABC (un b') (un c')))
 
-  ca <- (abc, client, abc, fromClient) `sLocally` \un -> do
-       restrict @_ @_ @ABC abc (\_ -> (do 
-         sCompare @_ @_ @ABC (un c') (un a')))
+  -- ca <- (abc, client, abc, fromClient) `sLocally` \un -> do
+  --       restrict @_ @_ @ABC abc (\_ -> (do 
+  --        sCompare @_ @_ @ABC (un c') (un a')))
 
+  ab <- ccompare (client, abc) a' b'
+  bc <- ccompare (client, abc) b' c'
+  ca <- ccompare (client, abc) c' a'
+  
   abc' <- (abc, client, abc, fromClient) `sLocally` \un -> do
     use @_ @ABC @ABC @ABC (un ab) (\ab -> use @_ @ABC @ABC @ABC (un bc) (\bc -> 
       restrict @_ @_ @ABC abc (\_ -> do
@@ -295,9 +379,8 @@ majorityQuorum = do
 
   -- c <- (abc, locC, abc, fromC) `sLocally` (\_ -> do
   --            relabel' abc cGetLine)
-
+ 
   -- sWait 
-
   (abc, client, abc, fromClient) `sLocally` \un -> do
               safePutStrLn @ABC $ label "value after consensus:"
               safePutStrLn @ABC $ (un con)
