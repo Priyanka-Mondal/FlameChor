@@ -288,7 +288,9 @@ majorityQuorum = do
   (bs, seller, bs, fromSeller) `sLocally` \_-> safePutStrLn @BS $ label "compare/select done at seller"
 
   --1 try with the majority quorum example
+  -- moving restrict inside
   -- try nested select compare
+  -- support for Reads/Eq for Sealed values 
   -- support for availability
 
 

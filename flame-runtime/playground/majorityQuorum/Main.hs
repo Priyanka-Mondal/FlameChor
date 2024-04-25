@@ -25,6 +25,9 @@ import Control.Monad.IO.Class
 --import MyHasChor.Choreography.Flaqr
 --import MyHasChor.Choreography.LabelledAsync
 import System.Environment
+import Data.Time
+import Data.Maybe (isJust, fromJust)
+import Data.Either (isLeft)
 import System.Timeout 
 import Data.Proxy
 --import Control.Monad
@@ -50,6 +53,12 @@ import Flame.TCB.Freer.IFC
 import Flame.Assert
 import GHC.TypeLits (KnownSymbol)
 import Data.Text.Internal.Fusion.Types (CC)
+
+
+maybeToEither :: e -> Maybe a -> Either e a
+maybeToEither e Nothing = Left e
+maybeToEither _ (Just a) = Right a
+
 
 type A = N "A"
 locA :: SPrin A
@@ -120,6 +129,8 @@ instance Show a => Show (l ! a) where
   show (Seal x) = "Seal " ++ show x
 instance Read a => Read (l ! a) where
   readsPrec _ s = [(Seal x, rest) | ("Seal", rest1) <- lex s, (x, rest) <- readsPrec 0 rest1]
+instance Eq a => Eq (l ! a) where
+  (Seal a) == (Seal b) = a == b
 
 cond' :: (Show a, Read a, KnownSymbol l)
      => (Proxy l, a @ l)  -- ^ A pair of a location and a scrutinee located on
@@ -183,70 +194,6 @@ sLocally (pc, loc, loc_pc, l) k = do
   return $ labelInA result
 -- ab <- (client, abc, fromClient) `ccompare` a' b'
 
-ccompare :: forall l l' l'' a loc pc. (HasFail a, Show a, Read a, KnownSymbol loc, Eq a) =>
-  (SPrin (N loc), SPrin pc) ->  (Async (l!(l'!a))) @ loc -> (Async (l!(l'!a))) @ loc
-  -> Labeled (Choreo IO) pc (pc ! (Async (l!(l'!a))) @ loc)
-ccompare (loc, pc) a b = do 
-    labelIn <$> restrict @pc @_ @pc pc (\_ -> do 
-      locally (sym loc) (\un -> do
-                            let a' = un a
-                            a'' <- timeout time (wait a')
-                            case a'' of 
-                              (Just e) -> do
-                                let e1 = join e
-                                case e1 of 
-                                  Seal c | c /= failVal -> do 
-                                    let b' = un b
-                                    b'' <- timeout time (wait b')
-                                    case b'' of 
-                                      (Just e') -> do 
-                                        let e2 = join e' 
-                                        case e2 of 
-                                          Seal d | d /= failVal -> if d == c then return b' else async (return (Seal (Seal failVal)))
-                                      Nothing -> async (return (Seal (Seal failVal)))
-                                  _ -> async (return (Seal (Seal failVal)))
-                              Nothing -> async (return (Seal (Seal failVal)))
-                  )
-          )
-
-cSelect :: forall l l' loc pc a. (HasFail a, Eq a, Show a, KnownSymbol loc) => 
-   (SPrin (N loc), SPrin pc) ->  (pc!(Async (l!(l'!a)))) @ loc -> (pc!(Async (l!(l'!a)))) @ loc
-  -> Labeled (Choreo IO) pc (pc ! (Async (l!(l'!a))) @ loc)
-cSelect (loc, pc) a b = do 
-              (pc, loc, pc, pc) `sLocally` (\un -> do 
-                  use @_ @_ @pc (un a) (\a -> do
-                    use @_ @_ @pc (un b) (\b -> do
-                      restrict @pc @_ @pc pc (\_ -> do 
-                          --let a'' = un a 
-                          a' <- timeout time (wait a)
-                          case a' of 
-                            (Just e) -> do 
-                              let e1 = join e
-                              case e1 of 
-                                Seal c | c /= failVal -> do 
-                                  return a
-                                _ -> do 
-                                      --let b'' = un b
-                                      b' <- timeout time (wait b)
-                                      case b' of 
-                                        (Just e) -> do
-                                          let b1 = join e
-                                          return b
-                                        Nothing -> async (return (Seal (Seal failVal)))
-                            _ -> do -- Nothing i.e. a did not arrive
-                              --let b'' = un b
-                              b' <- timeout time (wait b)
-                              case b' of 
-                                (Just e) -> do 
-                                  let b1' = join e
-                                  return b
-                                Nothing -> do 
-                                  async (return (Seal (Seal failVal)))
-                       )
-                     )
-                   )
-               )
-
 data Failed = Fail
 class CanFail m where
   ready  :: m a -> IO Bool -- do we ever want a non-IO effect?
@@ -297,8 +244,7 @@ instance (CanFail (Either Failed)) where
 sSelect :: forall l1 l2 m m' a. (CanFail m, Eq a) => m (l1!a) -> m (l2!a)
   -> IO (Either Failed ((C (l1 ⊔ l2) ∧ I(l1 ∨ l2) ∧ I {-A-} (l1 ∧ l2))!a))
 sSelect a b = do 
-    c <- forceEitherUntil 10000000 a b
-    case c of 
+  forceEitherUntil 10000000 a b >>= \case
       Left (Left Fail) -> return $ Left Fail
       Left (Right (Seal a')) -> return $ Right (Seal a')
       Right (Right (Seal b')) -> return $ Right (Seal b')
@@ -343,83 +289,103 @@ majorityQuorum = do
   b' <- (sym locB, abc, fromB, b) ~>: sym client
   c' <- (sym locC, abc, fromC, c) ~>: sym client
   
-  -- sWait on a b c client locally
-  -- ABC ! (Maybe), 
-
   -- ab <- (abc, client, abc, fromClient) `sLocally` \un -> do
-  --       a'' <- sWait a'
-  --       b'' <- sWait b'
-  --       c'' <- sWait c'  
   --       sSelect (sCompare a'' b'') (sSelect (sCompare b'' c'') (sCompare ))
-  -- moving restrict inside
-  -- typeclass that abstarcts away the difference between Async and FailOr 
 
-  -- ab <- (abc, client, abc, fromClient) `sLocally` \un -> do
-  --      restrict @_ @_ @ABC abc (\_ -> (do 
-  --        sCompare @_ @_ @ABC (un a') (un b')))
+
+
+  ab <- (abc, client, abc, fromClient) `sLocally` \un -> do
+       restrict @_ @_ @ABC abc (\_ -> (do 
+         sCompare (un a') (un b')))
   
+  (abc, client, abc, fromClient) `sLocally` \un -> do
+    use @_ @ABC @ABC @ABC (un ab) (\d' -> do 
+      case d' of 
+        Right e -> safePutStrLn @ABC $ label "ab: Some value"
+        Left _ -> safePutStrLn @ABC $ label "ab: Failed"
+       )
+   
+  bc <- (abc, client, abc, fromClient) `sLocally` \un -> do
+       restrict @_ @_ @ABC abc (\_ -> (do 
+         sCompare (un b') (un c')))
+  (abc, client, abc, fromClient) `sLocally` \un -> do
+    use @_ @ABC @ABC @ABC (un bc) (\d' -> do 
+      case d' of 
+        Right e -> safePutStrLn @ABC $ label "bc: Some value"
+        Left _ -> safePutStrLn @ABC $ label "bc: Failed"
+       )
+   
 
-  -- bc <- (abc, client, abc, fromClient) `sLocally` \un -> do
-  --      restrict @_ @_ @ABC abc (\_ -> (do 
-  --        sCompare @_ @_ @ABC (un b') (un c')))
+  ca <- (abc, client, abc, fromClient) `sLocally` \un -> do
+        restrict @_ @_ @ABC abc (\_ -> (do 
+         sCompare (un c') (un a')))
+  (abc, client, abc, fromClient) `sLocally` \un -> do
+    use @_ @ABC @ABC @ABC (un ca) (\d' -> do 
+      case d' of 
+        Right e -> safePutStrLn @ABC $ label "ca: Some value"
+        Left _ -> safePutStrLn @ABC $ label "ca: Failed"
+       )
+   
 
-  -- ca <- (abc, client, abc, fromClient) `sLocally` \un -> do
-  --       restrict @_ @_ @ABC abc (\_ -> (do 
-  --        sCompare @_ @_ @ABC (un c') (un a')))
-
-  ab <- ccompare (client, abc) a' b'
-  bc <- ccompare (client, abc) b' c'
-  ca <- ccompare (client, abc) c' a'
-
-  abc' <- cSelect (client, abc) ab bc
-  con' <- cSelect (client, abc) abc' ca
-
-  -- abc' <- (abc, client, abc, fromClient) `sLocally` \un -> do
-  --   use @_ @ABC @ABC @ABC (un ab) (\ab -> use @_ @ABC @ABC @ABC (un bc) (\bc -> 
-  --     restrict @_ @_ @ABC abc (\_ -> do
-  --             (sSelect @ABC @ABC @ABC (ab) (bc)
-  --               )))) 
-
-  con <- (abc, client, abc, fromClient) `sLocally` \un -> do
-    use @_ @ABC @ABC @ABC (un ca) (\ca -> use @_ @ABC @ABC @ABC (un abc') (\abc' -> 
-      join. join @ABC @ABC @ABC <$> restrict @_ @_ @ABC abc (\_ ->
-              (do 
-                s <- sSelect @ABC @ABC @ABC (ca) (abc')
-                (wait s)
-              ))))
-  
-  -- a <- (abc, locA, abc, fromA) `sLocally` (\_ -> do
-  --            relabel' abc aGetLine)
-
-  -- b <- (abc, locB, abc, fromB) `sLocally` (\_ -> do
-  --            relabel' abc bGetLine)
-
-  -- c <- (abc, locC, abc, fromC) `sLocally` (\_ -> do
-  --            relabel' abc cGetLine)
- 
-
+  abc' <- (abc, client, abc, fromClient) `sLocally` \un -> do
+    use @_ @ABC @ABC @ABC (un ab) (\ab -> use @_ @ABC @ABC @ABC (un bc) (\bc -> 
+      restrict @_ @_ @ABC abc (\_ -> do
+              (sSelect (ab) (bc)
+                )))) 
 
   (abc, client, abc, fromClient) `sLocally` \un -> do
-              safePutStrLn @ABC $ label "value after consensus:"
+    use @_ @ABC @ABC @ABC (un abc') (\d' -> do 
+      case d' of 
+        Right e -> safePutStrLn @ABC $ label "ab/bc: Some value"
+        Left _ -> safePutStrLn @ABC $ label "ab/bc: Failed"
+       )
+   
 
--- quorumMain :: HttpConfig -> IO () -- this one needs A B and C to run until Client performs wait()
--- quorumMain cfg = do
---   [loc] <- getArgs
---   case loc of
---     "client" -> runChoreography cfg (runLabeled  majorityQuorum) "client"
---     "A" -> runChoreography cfg (runLabeled  majorityQuorum) "A"
---     "B" -> runChoreography cfg (runLabeled  majorityQuorum) "B"
---     "C" -> runChoreography cfg (runLabeled  majorityQuorum) "C"
---   return ()
+  conn <- (abc, client, abc, fromClient) `sLocally` \un -> do
+    use @_ @ABC @ABC @ABC (un ca) (\ca -> use @_ @ABC @ABC @ABC (un abc') (\abc' -> 
+      restrict @_ @_ @ABC abc (\_ -> do
+              (sSelect (abc') (ca)
+                )))) 
 
+  (abc, client, abc, fromClient) `sLocally` \un -> do
+    use @_ @ABC @ABC @ABC (un conn) (\d' -> do 
+      case d' of 
+        Right e -> safePutStrLn @ABC $ label "ab/bc/ca: Some value"
+        Left _ -> safePutStrLn @ABC $ label "ab/bc/ca: Failed"
+       )
+   
+  a <- (abc, locA, abc, fromA) `sLocally` (\_ -> do
+             relabel' abc aGetLine)
 
-quorumMain :: HttpConfig -> IO ()
+  b <- (abc, locB, abc, fromB) `sLocally` (\_ -> do
+             relabel' abc bGetLine)
+
+  c <- (abc, locC, abc, fromC) `sLocally` (\_ -> do
+             relabel' abc cGetLine)
+ 
+  (abc, client, abc, fromClient) `sLocally` \un -> do
+              safePutStrLn @ABC $ label "-"
+
+quorumMain :: HttpConfig -> IO () -- this one needs A B and C to run until Client performs wait()
 quorumMain cfg = do
   [loc] <- getArgs
-  runChoreography cfg (runLabeled  majorityQuorum) loc >> return () >> quorumMain cfg
+  case loc of
+    "client" -> runChoreography cfg (runLabeled  majorityQuorum) "client"
+    "A" -> runChoreography cfg (runLabeled  majorityQuorum) "A"
+    "B" -> runChoreography cfg (runLabeled  majorityQuorum) "B"
+    "C" -> runChoreography cfg (runLabeled  majorityQuorum) "C"
+  return ()
+
+
+-- quorumMain :: HttpConfig -> Int -> IO ()
+-- quorumMain cfg cnt = do
+--   putStrLn $ "--------------------" ++ (show cnt)
+--   [loc] <- getArgs
+--   runChoreography cfg (runLabeled  majorityQuorum) loc >> return () >> quorumMain cfg (cnt+1)
  
 main = do 
-  quorumMain cfg 
+  quorumMain cfg
+  -- quorumMain cfg 0
  where
     cfg = mkHttpConfig [ ("A", ("localhost", 4242))
                        , ("B", ("localhost", 4343))
