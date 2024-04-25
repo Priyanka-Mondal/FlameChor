@@ -53,6 +53,7 @@ import Flame.TCB.Freer.IFC
 import Flame.Assert
 import GHC.TypeLits (KnownSymbol)
 import Data.Text.Internal.Fusion.Types (CC)
+import Data.Sequence (adjust')
 
 
 maybeToEither :: e -> Maybe a -> Either e a
@@ -238,13 +239,29 @@ instance (CanFail (Either Failed)) where
   ready a = return True
   failed = return . isLeft
   force = return
-  forceEither a b = return $ Left a
-
+  forceEither a b = do 
+    case a of
+      Left ea -> case b of 
+        Left eb -> return $ (Right (Left Fail)) -- ?? Left (Left Fail)
+        Right b' -> return $ Right (Right b') --(Right . eitherToCanFail) b
+      Right a' -> return $ Left (Right a') --(Right . eitherToCanFail) b
 
 sSelect :: forall l1 l2 m m' a. (CanFail m, Eq a) => m (l1!a) -> m (l2!a)
   -> IO (Either Failed ((C (l1 ⊔ l2) ∧ I(l1 ∨ l2) ∧ I {-A-} (l1 ∧ l2))!a))
 sSelect a b = do 
   forceEitherUntil 10000000 a b >>= \case
+      Right (Left Fail) -> return $ Left Fail
+      Left (Left Fail) -> return $ Left Fail
+      Left (Right (Seal a')) -> return $ Right (Seal a')
+      Right (Right (Seal b')) -> return $ Right (Seal b')
+
+sSelect' :: forall l1 l2 m m' a. (CanFail m, Eq a) => IO (m (l1!a)) -> IO (m (l2!a))
+  -> IO (Either Failed ((C (l1 ⊔ l2) ∧ I(l1 ∨ l2) ∧ I {-A-} (l1 ∧ l2))!a))
+sSelect' a' b' = do
+  a <- a'
+  b <- b' 
+  forceEitherUntil 10000000 a b >>= \case
+      Right (Left Fail) -> return $ Left Fail
       Left (Left Fail) -> return $ Left Fail
       Left (Right (Seal a')) -> return $ Right (Seal a')
       Right (Right (Seal b')) -> return $ Right (Seal b')
@@ -265,6 +282,25 @@ sCompare a b =
       forceUntil 10000000 a >>= \case 
         Left Fail -> return $ Left Fail
         Right (Seal a') -> return $ if a' == b' then Right (Seal b') else Left Fail
+
+sCompare' :: forall l1 l2 m m' a. (CanFail m, Eq a) => IO (m (l1!a)) -> IO (m (l2!a))
+  -> IO (Either Failed ((C (l1 ⊔ l2) ∧ I(l1 ∧ l2) ∧ I {-A-} (l1 ∨ l2))!a))
+sCompare' a' b' = do
+  a <- a'
+  b <- b'
+  forceEitherUntil 10000000 a b >>= \case
+    Left (Left Fail) -> return (Left Fail)
+    Left (Right (Seal a')) -> 
+      forceUntil 10000000 b >>= \case 
+        Left Fail -> return $ Left Fail
+        Right (Seal b') -> return $ if a' == b' then Right (Seal a') else Left Fail
+
+    Right (Left Fail) -> return (Left Fail)
+    Right (Right (Seal b')) -> 
+      forceUntil 10000000 a >>= \case 
+        Left Fail -> return $ Left Fail
+        Right (Seal a') -> return $ if a' == b' then Right (Seal b') else Left Fail
+
 
 
 majorityQuorum :: Labeled (Choreo IO) ABC ((ABC ! ())  @ "client")
@@ -288,12 +324,20 @@ majorityQuorum = do
   a' <- (sym locA, abc, fromA, a) ~>: sym client
   b' <- (sym locB, abc, fromB, b) ~>: sym client
   c' <- (sym locC, abc, fromC, c) ~>: sym client
+
+  abb <- (abc, client, abc, fromClient) `sLocally` \un -> do
+       restrict @_ @_ @ABC abc (\_ -> (do 
+         sSelect' (sSelect' (sCompare' (return (un a')) (return (un b'))) 
+           (sCompare' (return (un b')) (return (un c')))) (sCompare' (return (un a')) (return (un c')) )))
+
+  (abc, client, abc, fromClient) `sLocally` \un -> do
+    use @_ @ABC @ABC @ABC (un abb) (\d' -> do 
+      case d' of 
+        Right e -> safePutStrLn @ABC $ label "abb: Some value"
+        Left _ -> safePutStrLn @ABC $ label "abb: Failed"
+       )
+
   
-  -- ab <- (abc, client, abc, fromClient) `sLocally` \un -> do
-  --       sSelect (sCompare a'' b'') (sSelect (sCompare b'' c'') (sCompare ))
-
-
-
   ab <- (abc, client, abc, fromClient) `sLocally` \un -> do
        restrict @_ @_ @ABC abc (\_ -> (do 
          sCompare (un a') (un b')))
@@ -308,6 +352,7 @@ majorityQuorum = do
   bc <- (abc, client, abc, fromClient) `sLocally` \un -> do
        restrict @_ @_ @ABC abc (\_ -> (do 
          sCompare (un b') (un c')))
+
   (abc, client, abc, fromClient) `sLocally` \un -> do
     use @_ @ABC @ABC @ABC (un bc) (\d' -> do 
       case d' of 
@@ -315,10 +360,10 @@ majorityQuorum = do
         Left _ -> safePutStrLn @ABC $ label "bc: Failed"
        )
    
-
   ca <- (abc, client, abc, fromClient) `sLocally` \un -> do
         restrict @_ @_ @ABC abc (\_ -> (do 
          sCompare (un c') (un a')))
+
   (abc, client, abc, fromClient) `sLocally` \un -> do
     use @_ @ABC @ABC @ABC (un ca) (\d' -> do 
       case d' of 
@@ -340,7 +385,6 @@ majorityQuorum = do
         Left _ -> safePutStrLn @ABC $ label "ab/bc: Failed"
        )
    
-
   conn <- (abc, client, abc, fromClient) `sLocally` \un -> do
     use @_ @ABC @ABC @ABC (un ca) (\ca -> use @_ @ABC @ABC @ABC (un abc') (\abc' -> 
       restrict @_ @_ @ABC abc (\_ -> do
