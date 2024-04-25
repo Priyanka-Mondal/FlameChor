@@ -78,7 +78,9 @@ library
                     random >= 1.2.1.1,
                     array >= 0.5.4.0,
                     unordered-containers >= 0.2.19.1,
-                    timeout
+                    timeout,
+                    stm >= 2.5.1.0
+
         , async                >= 2.2  && < 2.3
         , base                 >= 4.16 && < 4.20
         , bytestring           >= 0.11 && < 0.13
@@ -202,6 +204,7 @@ executable mq
         , freer-simple
         --, HasChor
         , flame-runtime
+        , stm >= 2.5.1.0
 
 
 

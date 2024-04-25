@@ -1,0 +1,160 @@
+-- sSelect' :: forall l l' l'' a pc. (HasFail a, Eq a, Show a, pc ⊑ l, pc ⊑ l') => 
+--     (SPrin pc) -> Async (l!(l'!a)) -> Async (l!(l'!a)) -> Labeled IO pc (pc ! Async (l!(l'!a)))
+-- sSelect' pc a b = do
+--     a' <- liftIO $ timeout time (wait a)
+--     case a' of 
+--       (Just e) -> do 
+--         let e1 = join e
+--         case e1 of 
+--           Seal c | c /= failVal -> do 
+--             restrict pc (\_ -> return a) 
+--           _ -> do 
+--                 b' <- liftIO $ timeout time (wait b)
+--                 case b' of 
+--                   (Just e) -> do
+--                     --let b1 = join e
+--                     restrict pc (\_ -> return b)
+--                   Nothing -> restrict pc (\_ -> do async (return (Seal (Seal failVal))))
+--       _ -> do -- Nothing i.e. a did not arrive
+--          b' <- liftIO $ timeout time (wait b)
+--          case b' of 
+--           (Just e) -> do 
+--             --let b1' = join e
+--             restrict pc (\_ -> return b) 
+--           Nothing -> do 
+--             restrict pc (\_ -> async (return (Seal (Seal failVal))))
+
+-- sCompare' :: forall l l' l'' a pc. (HasFail a, Eq a, pc ⊑ l, pc ⊑ l', Show a) => 
+--      (SPrin pc) -> Async (l!(l'!a)) -> Async (l!(l'!a)) -> Labeled IO pc (pc ! Async (l!(l'!a)))
+-- sCompare' pc a b = do
+--     a' <- restrict @_ @_ @pc pc (\_ -> timeout time (wait a))
+--     use @_ @_ @_ @_ a' (\a' -> do
+--         case a' of 
+--           (Just e) -> do
+--             let e1 = join @_ @_ @_ e
+--             case e1 of 
+--               Seal c | c /= failVal -> do 
+--                 b' <- restrict @_ @_ @pc pc (\_ -> timeout time (wait b))
+--                 use @_ @_ @_ @_ b' (\b' -> do
+--                   case b' of 
+--                     (Just e') -> do 
+--                       let e2 = join @_ @_ @pc e' 
+--                       case e2 of 
+--                         Seal d | d /= failVal -> if d == c then (restrict pc (\_ -> return b)) else (restrict pc (\_ -> do async (return (Seal (Seal failVal)))))
+--                     Nothing -> restrict pc (\_ -> do async (return (Seal (Seal failVal)))))
+--               _ -> restrict pc  (\_ -> do async (return (Seal (Seal failVal))))
+--           Nothing -> restrict pc  (\_ -> do async (return (Seal (Seal failVal))))
+--                               )
+
+
+sSelect :: forall l l' l'' a. (HasFail a, Eq a, Show a) => 
+    Async (l!(l'!a)) -> Async (l!(l'!a)) -> IO (Async (l!(l'!a)))
+sSelect a b = do
+    a' <- timeout time (wait a)
+    case a' of 
+      (Just e) -> do 
+        let e1 = join e
+        case e1 of 
+          Seal c | c /= failVal -> do 
+            return a 
+          _ -> do 
+                b' <- timeout time (wait b)
+                case b' of 
+                  (Just e) -> do
+                    let b1 = join e
+                    return b 
+                  Nothing -> async (return (Seal (Seal failVal)))
+      _ -> do -- Nothing i.e. a did not arrive
+         b' <- timeout time (wait b)
+         case b' of 
+          (Just e) -> do 
+            let b1' = join e
+            return b 
+          Nothing -> do 
+            async (return (Seal (Seal failVal)))
+
+
+sCompare :: forall l l' l'' a. (HasFail a, Eq a, l ⊑ l'', l' ⊑ l'', Show a) => 
+    Async (l!(l'!a)) -> Async (l!(l'!a)) -> IO (Async (l!(l'!a)))
+sCompare a b = do
+    a' <- timeout time (wait a)
+    case a' of 
+      (Just e) -> do
+         let e1 = join e
+         case e1 of 
+           Seal c | c /= failVal -> do 
+             b' <- timeout time (wait b)
+             case b' of 
+               (Just e') -> do 
+                let e2 = join e' 
+                case e2 of 
+                  Seal d | d /= failVal -> if d == c then return b else async (return (Seal (Seal failVal)))
+               Nothing -> async (return (Seal (Seal failVal)))
+           _ -> async (return (Seal (Seal failVal)))
+      Nothing -> async (return (Seal (Seal failVal)))
+
+
+ccompare :: forall l l' l'' a loc pc. (HasFail a, Show a, Read a, KnownSymbol loc, Eq a) =>
+  (SPrin (N loc), SPrin pc) ->  (Async (l!(l'!a))) @ loc -> (Async (l!(l'!a))) @ loc
+  -> Labeled (Choreo IO) pc (pc ! (Async (l!(l'!a))) @ loc)
+ccompare (loc, pc) a b = do 
+    labelIn <$> restrict @pc @_ @pc pc (\_ -> do 
+      locally (sym loc) (\un -> do
+                            let a' = un a
+                            a'' <- timeout time (wait a')
+                            case a'' of 
+                              (Just e) -> do
+                                let e1 = join e
+                                case e1 of 
+                                  Seal c | c /= failVal -> do 
+                                    let b' = un b
+                                    b'' <- timeout time (wait b')
+                                    case b'' of 
+                                      (Just e') -> do 
+                                        let e2 = join e' 
+                                        case e2 of 
+                                          Seal d | d /= failVal -> if d == c then return b' else async (return (Seal (Seal failVal)))
+                                      Nothing -> async (return (Seal (Seal failVal)))
+                                  _ -> async (return (Seal (Seal failVal)))
+                              Nothing -> async (return (Seal (Seal failVal)))
+                  )
+          )
+
+cSelect :: forall l l' loc pc a. (HasFail a, Eq a, Show a, KnownSymbol loc) => 
+   (SPrin (N loc), SPrin pc) ->  (pc!(Async (l!(l'!a)))) @ loc -> (pc!(Async (l!(l'!a)))) @ loc
+  -> Labeled (Choreo IO) pc (pc ! (Async (l!(l'!a))) @ loc)
+cSelect (loc, pc) a b = do 
+              (pc, loc, pc, pc) `sLocally` (\un -> do 
+                  use @_ @_ @pc (un a) (\a -> do
+                    use @_ @_ @pc (un b) (\b -> do
+                      restrict @pc @_ @pc pc (\_ -> do 
+                          --let a'' = un a 
+                          a' <- timeout time (wait a)
+                          case a' of 
+                            (Just e) -> do 
+                              let e1 = join e
+                              case e1 of 
+                                Seal c | c /= failVal -> do 
+                                  return a
+                                _ -> do 
+                                      --let b'' = un b
+                                      b' <- timeout time (wait b)
+                                      case b' of 
+                                        (Just e) -> do
+                                          let b1 = join e
+                                          return b
+                                        Nothing -> async (return (Seal (Seal failVal)))
+                            _ -> do -- Nothing i.e. a did not arrive
+                              --let b'' = un b
+                              b' <- timeout time (wait b)
+                              case b' of 
+                                (Just e) -> do 
+                                  let b1' = join e
+                                  return b
+                                Nothing -> do 
+                                  async (return (Seal (Seal failVal)))
+                       )
+                     )
+                   )
+               )
+

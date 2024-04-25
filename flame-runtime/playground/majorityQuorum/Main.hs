@@ -22,7 +22,7 @@ import MyHasChor.Choreography.NetworkAsync.Http
 import MyHasChor.Choreography.ChoreoAsync
 import Control.Concurrent.Async
 import Control.Monad.IO.Class
-import MyHasChor.Choreography.Flaqr
+--import MyHasChor.Choreography.Flaqr
 --import MyHasChor.Choreography.LabelledAsync
 import System.Environment
 import System.Timeout 
@@ -189,121 +189,136 @@ ccompare :: forall l l' l'' a loc pc. (HasFail a, Show a, Read a, KnownSymbol lo
 ccompare (loc, pc) a b = do 
     labelIn <$> restrict @pc @_ @pc pc (\_ -> do 
       locally (sym loc) (\un -> do
-                                  let a' = un a
-                                  a'' <- timeout time (wait a')
-                                  case a'' of 
-                                    (Just e) -> do
-                                      let e1 = join e
-                                      case e1 of 
-                                        Seal c | c /= failVal -> do 
-                                          let b' = un b
-                                          b'' <- timeout time (wait b')
-                                          case b'' of 
-                                            (Just e') -> do 
-                                              let e2 = join e' 
-                                              case e2 of 
-                                                Seal d | d /= failVal -> if d == c then return b' else async (return (Seal (Seal failVal)))
-                                            Nothing -> async (return (Seal (Seal failVal)))
-                                        _ -> async (return (Seal (Seal failVal)))
-                                    Nothing -> async (return (Seal (Seal failVal)))
-                        )
-                )
+                            let a' = un a
+                            a'' <- timeout time (wait a')
+                            case a'' of 
+                              (Just e) -> do
+                                let e1 = join e
+                                case e1 of 
+                                  Seal c | c /= failVal -> do 
+                                    let b' = un b
+                                    b'' <- timeout time (wait b')
+                                    case b'' of 
+                                      (Just e') -> do 
+                                        let e2 = join e' 
+                                        case e2 of 
+                                          Seal d | d /= failVal -> if d == c then return b' else async (return (Seal (Seal failVal)))
+                                      Nothing -> async (return (Seal (Seal failVal)))
+                                  _ -> async (return (Seal (Seal failVal)))
+                              Nothing -> async (return (Seal (Seal failVal)))
+                  )
+          )
 
-sSelect :: forall l l' l'' a. (HasFail a, Eq a, Show a) => 
-    Async (l!(l'!a)) -> Async (l!(l'!a)) -> IO (Async (l!(l'!a)))
-sSelect a b = do
-    a' <- timeout time (wait a)
-    case a' of 
-      (Just e) -> do 
-        let e1 = join e
-        case e1 of 
-          Seal c | c /= failVal -> do 
-            return a 
-          _ -> do 
-                b' <- timeout time (wait b)
-                case b' of 
-                  (Just e) -> do
-                    let b1 = join e
-                    return b 
-                  Nothing -> async (return (Seal (Seal failVal)))
-      _ -> do -- Nothing i.e. a did not arrive
-         b' <- timeout time (wait b)
-         case b' of 
-          (Just e) -> do 
-            let b1' = join e
-            return b 
-          Nothing -> do 
-            async (return (Seal (Seal failVal)))
+cSelect :: forall l l' loc pc a. (HasFail a, Eq a, Show a, KnownSymbol loc) => 
+   (SPrin (N loc), SPrin pc) ->  (pc!(Async (l!(l'!a)))) @ loc -> (pc!(Async (l!(l'!a)))) @ loc
+  -> Labeled (Choreo IO) pc (pc ! (Async (l!(l'!a))) @ loc)
+cSelect (loc, pc) a b = do 
+              (pc, loc, pc, pc) `sLocally` (\un -> do 
+                  use @_ @_ @pc (un a) (\a -> do
+                    use @_ @_ @pc (un b) (\b -> do
+                      restrict @pc @_ @pc pc (\_ -> do 
+                          --let a'' = un a 
+                          a' <- timeout time (wait a)
+                          case a' of 
+                            (Just e) -> do 
+                              let e1 = join e
+                              case e1 of 
+                                Seal c | c /= failVal -> do 
+                                  return a
+                                _ -> do 
+                                      --let b'' = un b
+                                      b' <- timeout time (wait b)
+                                      case b' of 
+                                        (Just e) -> do
+                                          let b1 = join e
+                                          return b
+                                        Nothing -> async (return (Seal (Seal failVal)))
+                            _ -> do -- Nothing i.e. a did not arrive
+                              --let b'' = un b
+                              b' <- timeout time (wait b)
+                              case b' of 
+                                (Just e) -> do 
+                                  let b1' = join e
+                                  return b
+                                Nothing -> do 
+                                  async (return (Seal (Seal failVal)))
+                       )
+                     )
+                   )
+               )
+
+data Failed = Fail
+class CanFail m where
+  ready  :: m a -> IO Bool -- do we ever want a non-IO effect?
+  failed :: m a -> IO Bool
+  force  :: m a -> IO (Either Failed a)
+  forceEither :: m a -> m b -> IO (Either (Either Failed a) (Either Failed b))
+
+  -- | Blocks until force completes or timeout is reached
+  forceUntil :: Int -> m a -> IO (Either Failed a)
+  forceUntil n a = timeout n (force a) >>= \case 
+                     Just (Right a) -> return $ Right a
+                     _ -> return $ Left Fail
+
+  -- | Blocks until force on a or b completes or timeout is reached.
+  forceEitherUntil :: Int -> m a -> m b -> IO (Either (Either Failed a) (Either Failed b))
+  forceEitherUntil n a b = timeout n (forceEither a b) >>= \case 
+                     Just (Left ea) -> return $ Left ea
+                     Just (Right eb) -> return $ Right eb
+                     Nothing -> return $ Left (Left Fail)
+
+eitherToCanFail :: Either e a -> Either Failed a
+eitherToCanFail = either (const $ Left Fail) Right
+
+instance (CanFail Async) where
+  -- | Returns true if Async has completed (successfully or not)
+  ready a = poll a >>= \r -> return $ isJust r
+  -- | Returns true if Async has completed with an exception
+  failed a = poll a >>= \r -> return (isJust r && isLeft (fromJust r))
+
+  -- | Blocks until Async completes 
+  force a = waitCatch a >>= \case
+    Left exc -> return $ Left Fail
+    Right a'' -> return $ Right a''
+
+  -- | Blocks until Async completes 
+  forceEither a b = waitEitherCatch a b >>= \case
+      Left ea  -> return $ (Left  . eitherToCanFail) ea
+      Right eb -> return $ (Right . eitherToCanFail) eb
+  
+
+instance (CanFail (Either Failed)) where
+  ready a = return True
+  failed = return . isLeft
+  force = return
+  forceEither a b = return $ Left a
 
 
+sSelect :: forall l1 l2 m m' a. (CanFail m, Eq a) => m (l1!a) -> m (l2!a)
+  -> IO (Either Failed ((C (l1 ⊔ l2) ∧ I(l1 ∨ l2) ∧ I {-A-} (l1 ∧ l2))!a))
+sSelect a b = do 
+    c <- forceEitherUntil 10000000 a b
+    case c of 
+      Left (Left Fail) -> return $ Left Fail
+      Left (Right (Seal a')) -> return $ Right (Seal a')
+      Right (Right (Seal b')) -> return $ Right (Seal b')
+ 
 
--- sSelect' :: forall l l' l'' a pc. (HasFail a, Eq a, Show a, pc ⊑ l, pc ⊑ l') => 
---     (SPrin pc) -> Async (l!(l'!a)) -> Async (l!(l'!a)) -> Labeled IO pc (pc ! Async (l!(l'!a)))
--- sSelect' pc a b = do
---     a' <- liftIO $ timeout time (wait a)
---     case a' of 
---       (Just e) -> do 
---         let e1 = join e
---         case e1 of 
---           Seal c | c /= failVal -> do 
---             restrict pc (\_ -> return a) 
---           _ -> do 
---                 b' <- liftIO $ timeout time (wait b)
---                 case b' of 
---                   (Just e) -> do
---                     --let b1 = join e
---                     restrict pc (\_ -> return b)
---                   Nothing -> restrict pc (\_ -> do async (return (Seal (Seal failVal))))
---       _ -> do -- Nothing i.e. a did not arrive
---          b' <- liftIO $ timeout time (wait b)
---          case b' of 
---           (Just e) -> do 
---             --let b1' = join e
---             restrict pc (\_ -> return b) 
---           Nothing -> do 
---             restrict pc (\_ -> async (return (Seal (Seal failVal))))
+sCompare :: forall l1 l2 m m' a. (CanFail m, Eq a) => m (l1!a) -> m (l2!a)
+  -> IO (Either Failed ((C (l1 ⊔ l2) ∧ I(l1 ∧ l2) ∧ I {-A-} (l1 ∨ l2))!a))
+sCompare a b = 
+  forceEitherUntil 10000000 a b >>= \case
+    Left (Left Fail) -> return (Left Fail)
+    Left (Right (Seal a')) -> 
+      forceUntil 10000000 b >>= \case 
+        Left Fail -> return $ Left Fail
+        Right (Seal b') -> return $ if a' == b' then Right (Seal a') else Left Fail
 
-sCompare :: forall l l' l'' a. (HasFail a, Eq a, l ⊑ l'', l' ⊑ l'', Show a) => 
-    Async (l!(l'!a)) -> Async (l!(l'!a)) -> IO (Async (l!(l'!a)))
-sCompare a b = do
-    a' <- timeout time (wait a)
-    case a' of 
-      (Just e) -> do
-         let e1 = join e
-         case e1 of 
-           Seal c | c /= failVal -> do 
-             b' <- timeout time (wait b)
-             case b' of 
-               (Just e') -> do 
-                let e2 = join e' 
-                case e2 of 
-                  Seal d | d /= failVal -> if d == c then return b else async (return (Seal (Seal failVal)))
-               Nothing -> async (return (Seal (Seal failVal)))
-           _ -> async (return (Seal (Seal failVal)))
-      Nothing -> async (return (Seal (Seal failVal)))
-
-
--- sCompare' :: forall l l' l'' a pc. (HasFail a, Eq a, pc ⊑ l, pc ⊑ l', Show a) => 
---      (SPrin pc) -> Async (l!(l'!a)) -> Async (l!(l'!a)) -> Labeled IO pc (pc ! Async (l!(l'!a)))
--- sCompare' pc a b = do
---     a' <- restrict @_ @_ @pc pc (\_ -> timeout time (wait a))
---     use @_ @_ @_ @_ a' (\a' -> do
---         case a' of 
---           (Just e) -> do
---             let e1 = join @_ @_ @_ e
---             case e1 of 
---               Seal c | c /= failVal -> do 
---                 b' <- restrict @_ @_ @pc pc (\_ -> timeout time (wait b))
---                 use @_ @_ @_ @_ b' (\b' -> do
---                   case b' of 
---                     (Just e') -> do 
---                       let e2 = join @_ @_ @pc e' 
---                       case e2 of 
---                         Seal d | d /= failVal -> if d == c then (restrict pc (\_ -> return b)) else (restrict pc (\_ -> do async (return (Seal (Seal failVal)))))
---                     Nothing -> restrict pc (\_ -> do async (return (Seal (Seal failVal)))))
---               _ -> restrict pc  (\_ -> do async (return (Seal (Seal failVal))))
---           Nothing -> restrict pc  (\_ -> do async (return (Seal (Seal failVal))))
---                               )
+    Right (Left Fail) -> return (Left Fail)
+    Right (Right (Seal b')) -> 
+      forceUntil 10000000 a >>= \case 
+        Left Fail -> return $ Left Fail
+        Right (Seal a') -> return $ if a' == b' then Right (Seal b') else Left Fail
 
 
 majorityQuorum :: Labeled (Choreo IO) ABC ((ABC ! ())  @ "client")
@@ -328,8 +343,6 @@ majorityQuorum = do
   b' <- (sym locB, abc, fromB, b) ~>: sym client
   c' <- (sym locC, abc, fromC, c) ~>: sym client
   
- 
-
   -- sWait on a b c client locally
   -- ABC ! (Maybe), 
 
@@ -357,19 +370,23 @@ majorityQuorum = do
   ab <- ccompare (client, abc) a' b'
   bc <- ccompare (client, abc) b' c'
   ca <- ccompare (client, abc) c' a'
-  
-  abc' <- (abc, client, abc, fromClient) `sLocally` \un -> do
-    use @_ @ABC @ABC @ABC (un ab) (\ab -> use @_ @ABC @ABC @ABC (un bc) (\bc -> 
-      restrict @_ @_ @ABC abc (\_ -> do
-              (sSelect @ABC @ABC @ABC (ab) (bc)
-                )))) 
+
+  abc' <- cSelect (client, abc) ab bc
+  con' <- cSelect (client, abc) abc' ca
+
+  -- abc' <- (abc, client, abc, fromClient) `sLocally` \un -> do
+  --   use @_ @ABC @ABC @ABC (un ab) (\ab -> use @_ @ABC @ABC @ABC (un bc) (\bc -> 
+  --     restrict @_ @_ @ABC abc (\_ -> do
+  --             (sSelect @ABC @ABC @ABC (ab) (bc)
+  --               )))) 
 
   con <- (abc, client, abc, fromClient) `sLocally` \un -> do
     use @_ @ABC @ABC @ABC (un ca) (\ca -> use @_ @ABC @ABC @ABC (un abc') (\abc' -> 
       join. join @ABC @ABC @ABC <$> restrict @_ @_ @ABC abc (\_ ->
               (do 
                 s <- sSelect @ABC @ABC @ABC (ca) (abc')
-                (wait s)))))
+                (wait s)
+              ))))
   
   -- a <- (abc, locA, abc, fromA) `sLocally` (\_ -> do
   --            relabel' abc aGetLine)
@@ -380,10 +397,10 @@ majorityQuorum = do
   -- c <- (abc, locC, abc, fromC) `sLocally` (\_ -> do
   --            relabel' abc cGetLine)
  
-  -- sWait 
+
+
   (abc, client, abc, fromClient) `sLocally` \un -> do
               safePutStrLn @ABC $ label "value after consensus:"
-              safePutStrLn @ABC $ (un con)
 
 -- quorumMain :: HttpConfig -> IO () -- this one needs A B and C to run until Client performs wait()
 -- quorumMain cfg = do
