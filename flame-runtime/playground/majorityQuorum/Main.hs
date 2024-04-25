@@ -266,7 +266,6 @@ sSelect' a' b' = do
       Left (Right (Seal a')) -> return $ Right (Seal a')
       Right (Right (Seal b')) -> return $ Right (Seal b')
  
-
 sCompare :: forall l1 l2 m m' a. (CanFail m, Eq a) => m (l1!a) -> m (l2!a)
   -> IO (Either Failed ((C (l1 ⊔ l2) ∧ I(l1 ∧ l2) ∧ I {-A-} (l1 ∨ l2))!a))
 sCompare a b = 
@@ -302,7 +301,6 @@ sCompare' a' b' = do
         Right (Seal a') -> return $ if a' == b' then Right (Seal b') else Left Fail
 
 
-
 majorityQuorum :: Labeled (Choreo IO) ABC ((ABC ! ())  @ "client")
 majorityQuorum = do 
  
@@ -333,11 +331,10 @@ majorityQuorum = do
   (abc, client, abc, fromClient) `sLocally` \un -> do
     use @_ @ABC @ABC @ABC (un abb) (\d' -> do 
       case d' of 
-        Right e -> safePutStrLn @ABC $ label "abb: Some value"
-        Left _ -> safePutStrLn @ABC $ label "abb: Failed"
+        Right e -> safePutStrLn @ABC $ label "nested: Some value"
+        Left _ -> safePutStrLn @ABC $ label "nested: Failed"
        )
 
-  
   ab <- (abc, client, abc, fromClient) `sLocally` \un -> do
        restrict @_ @_ @ABC abc (\_ -> (do 
          sCompare (un a') (un b')))
@@ -371,7 +368,6 @@ majorityQuorum = do
         Left _ -> safePutStrLn @ABC $ label "ca: Failed"
        )
    
-
   abc' <- (abc, client, abc, fromClient) `sLocally` \un -> do
     use @_ @ABC @ABC @ABC (un ab) (\ab -> use @_ @ABC @ABC @ABC (un bc) (\bc -> 
       restrict @_ @_ @ABC abc (\_ -> do
