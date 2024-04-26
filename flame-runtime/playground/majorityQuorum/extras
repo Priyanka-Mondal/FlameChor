@@ -158,3 +158,32 @@ cSelect (loc, pc) a b = do
                    )
                )
 
+sSelect' :: forall l1 l2 m m' a. (CanFail m, Eq a) => IO (m (l1!a)) -> IO (m (l2!a))
+  -> IO (Either Failed ((C (l1 ⊔ l2) ∧ I(l1 ∨ l2) ∧ I {-A-} (l1 ∧ l2))!a))
+sSelect' a' b' = do
+  a <- a'
+  b <- b' 
+  forceEitherUntil 10000000 a b >>= \case
+      Right (Left Fail) -> return $ Left Fail
+      Left (Left Fail) -> return $ Left Fail
+      Left (Right (Seal a')) -> return $ Right (Seal a')
+      Right (Right (Seal b')) -> return $ Right (Seal b')
+
+sCompare' :: forall l1 l2 m m' a. (CanFail m, Eq a) => IO (m (l1!a)) -> IO (m (l2!a))
+  -> IO (Either Failed ((C (l1 ⊔ l2) ∧ I(l1 ∧ l2) ∧ I {-A-} (l1 ∨ l2))!a))
+sCompare' a' b' = do
+  a <- a'
+  b <- b'
+  forceEitherUntil 10000000 a b >>= \case
+    Left (Left Fail) -> return (Left Fail)
+    Left (Right (Seal a')) -> 
+      forceUntil 10000000 b >>= \case 
+        Left Fail -> return $ Left Fail
+        Right (Seal b') -> return $ if a' == b' then Right (Seal a') else Left Fail
+
+    Right (Left Fail) -> return (Left Fail)
+    Right (Right (Seal b')) -> 
+      forceUntil 10000000 a >>= \case 
+        Left Fail -> return $ Left Fail
+        Right (Seal a') -> return $ if a' == b' then Right (Seal b') else Left Fail
+

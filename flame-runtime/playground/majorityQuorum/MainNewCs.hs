@@ -287,10 +287,10 @@ majorityQuorum = do
   (bs, buyer2, bs, fromBuyer2) `sLocally` \_-> relabel' bs buyerGetLine2
   (bs, seller, bs, fromSeller) `sLocally` \_-> safePutStrLn @BS $ label "compare/select done at seller"
 
-  -- try nested select compare -- working with IO r.n. what about Labeled monad ?
+  -- try nested select compare -- working with IO r.n. what about Labeled monad working but need to use `use`?
   -- support for Reads/Eq for Sealed values 
   -- support for availability 
-  -- moving restrict inside of select/compare functions
+
 
 
 

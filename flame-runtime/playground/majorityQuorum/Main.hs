@@ -255,17 +255,35 @@ sSelect a b = do
       Left (Right (Seal a')) -> return $ Right (Seal a')
       Right (Right (Seal b')) -> return $ Right (Seal b')
 
-sSelect' :: forall l1 l2 m m' a. (CanFail m, Eq a) => IO (m (l1!a)) -> IO (m (l2!a))
-  -> IO (Either Failed ((C (l1 ⊔ l2) ∧ I(l1 ∨ l2) ∧ I {-A-} (l1 ∧ l2))!a))
-sSelect' a' b' = do
+sSelect' :: forall l1 l2 m m' a pc. (CanFail m, Eq a, pc ⊑ l1, pc ⊑ l2) => (SPrin pc)
+  -> Labeled IO pc (m (l1!a)) 
+  -> Labeled IO pc (m (l2!a))
+  -> Labeled IO pc (pc!(Either Failed ((C (l1 ⊔ l2) ∧ I(l1 ∨ l2) ∧ I {-A-} (l1 ∧ l2))!a)))
+sSelect' pc a' b' = do
   a <- a'
-  b <- b' 
+  b <- b'  
+  restrict pc (\_ ->
+    (liftIO $ forceEitherUntil 10000000 a b) >>= \case
+        Right (Left Fail) -> return $ Left Fail
+        Left (Left Fail) -> return $ Left Fail
+        Left (Right (Seal a')) -> return $ Right (Seal a')
+        Right (Right (Seal b')) -> return $ Right (Seal b')
+        )
+
+sSelect'' :: forall l1 l2 m m' a pc. (CanFail m, Eq a, pc ⊑ l1, pc ⊑ l2) => 
+   IO (m (l1!a)) 
+  -> IO (m (l2!a))
+  -> IO ((Either Failed ((C (l1 ⊔ l2) ∧ I(l1 ∨ l2) ∧ I {-A-} (l1 ∧ l2))!a)))
+sSelect'' a' b' = do
+  a <- a'
+  b <- b'  
   forceEitherUntil 10000000 a b >>= \case
-      Right (Left Fail) -> return $ Left Fail
-      Left (Left Fail) -> return $ Left Fail
-      Left (Right (Seal a')) -> return $ Right (Seal a')
-      Right (Right (Seal b')) -> return $ Right (Seal b')
- 
+        Right (Left Fail) -> return $ Left Fail
+        Left (Left Fail) -> return $ Left Fail
+        Left (Right (Seal a')) -> return $ Right (Seal a')
+        Right (Right (Seal b')) -> return $ Right (Seal b')
+
+
 sCompare :: forall l1 l2 m m' a. (CanFail m, Eq a) => m (l1!a) -> m (l2!a)
   -> IO (Either Failed ((C (l1 ⊔ l2) ∧ I(l1 ∧ l2) ∧ I {-A-} (l1 ∨ l2))!a))
 sCompare a b = 
@@ -282,23 +300,47 @@ sCompare a b =
         Left Fail -> return $ Left Fail
         Right (Seal a') -> return $ if a' == b' then Right (Seal b') else Left Fail
 
-sCompare' :: forall l1 l2 m m' a. (CanFail m, Eq a) => IO (m (l1!a)) -> IO (m (l2!a))
-  -> IO (Either Failed ((C (l1 ⊔ l2) ∧ I(l1 ∧ l2) ∧ I {-A-} (l1 ∨ l2))!a))
-sCompare' a' b' = do
+sCompare' :: forall l1 l2 m m' a pc. (CanFail m, Eq a, pc ⊑ l1, pc ⊑ l2) => (SPrin pc)
+  -> Labeled IO pc (m (l1!a)) 
+  -> Labeled IO pc (m (l2!a))
+  -> Labeled IO pc (pc!(Either Failed ((C (l1 ⊔ l2) ∧ I(l1 ∧ l2) ∧ I {-A-} (l1 ∨ l2))!a)))
+sCompare' pc a' b' = do
+  a <- a'
+  b <- b'
+  restrict pc (\_ -> 
+      (liftIO $ forceEitherUntil 10000000 a b) >>= \case
+        Left (Left Fail) -> return (Left Fail)
+        Left (Right (Seal a')) -> 
+           (liftIO $ forceUntil 10000000 b) >>= \case 
+            Left Fail -> return $ Left Fail
+            Right (Seal b') -> return $ if a' == b' then Right (Seal a') else Left Fail
+
+        Right (Left Fail) -> return (Left Fail)
+        Right (Right (Seal b')) -> 
+           (liftIO $ forceUntil 10000000 a) >>= \case 
+            Left Fail -> return $ Left Fail
+            Right (Seal a') -> return $ if a' == b' then Right (Seal b') else Left Fail
+    )
+
+sCompare'' :: forall l1 l2 m m' a pc. (CanFail m, Eq a, pc ⊑ l1, pc ⊑ l2) => 
+     IO (m (l1!a)) 
+  -> IO (m (l2!a))
+  -> IO ((Either Failed ((C (l1 ⊔ l2) ∧ I(l1 ∧ l2) ∧ I {-A-} (l1 ∨ l2))!a)))
+sCompare'' a' b' = do
   a <- a'
   b <- b'
   forceEitherUntil 10000000 a b >>= \case
-    Left (Left Fail) -> return (Left Fail)
-    Left (Right (Seal a')) -> 
-      forceUntil 10000000 b >>= \case 
-        Left Fail -> return $ Left Fail
-        Right (Seal b') -> return $ if a' == b' then Right (Seal a') else Left Fail
+        Left (Left Fail) -> return (Left Fail)
+        Left (Right (Seal a')) -> 
+          forceUntil 10000000 b >>= \case 
+            Left Fail -> return $ Left Fail
+            Right (Seal b') -> return $ if a' == b' then Right (Seal a') else Left Fail
 
-    Right (Left Fail) -> return (Left Fail)
-    Right (Right (Seal b')) -> 
-      forceUntil 10000000 a >>= \case 
-        Left Fail -> return $ Left Fail
-        Right (Seal a') -> return $ if a' == b' then Right (Seal b') else Left Fail
+        Right (Left Fail) -> return (Left Fail)
+        Right (Right (Seal b')) -> 
+          forceUntil 10000000 a >>= \case 
+            Left Fail -> return $ Left Fail
+            Right (Seal a') -> return $ if a' == b' then Right (Seal b') else Left Fail
 
 
 majorityQuorum :: Labeled (Choreo IO) ABC ((ABC ! ())  @ "client")
@@ -323,16 +365,30 @@ majorityQuorum = do
   b' <- (sym locB, abc, fromB, b) ~>: sym client
   c' <- (sym locC, abc, fromC, c) ~>: sym client
 
-  abb <- (abc, client, abc, fromClient) `sLocally` \un -> do
-       restrict @_ @_ @ABC abc (\_ -> (do 
-         sSelect' (sSelect' (sCompare' (return (un a')) (return (un b'))) 
-           (sCompare' (return (un b')) (return (un c')))) (sCompare' (return (un a')) (return (un c')) )))
+  con <- (abc, client, abc, fromClient) `sLocally` \un -> do  -- almost nested with Labeled IO
+      ab <- (sCompare' abc (return (un a')) (return (un b'))) 
+      bc <- (sCompare' abc (return (un b')) (return (un c')))
+      ca <- (sCompare' abc (return (un c')) (return (un a')))
+      abbc <- use ab (\ab' -> (use bc (\bc' -> sSelect' abc (return ab') (return bc'))))
+      use abbc (\abbc' -> use ca (\ca'-> sSelect' abc (return abbc') (return ca')))   
 
   (abc, client, abc, fromClient) `sLocally` \un -> do
-    use @_ @ABC @ABC @ABC (un abb) (\d' -> do 
+    use @_ @ABC @ABC @ABC (un con) (\d' -> do 
       case d' of 
-        Right e -> safePutStrLn @ABC $ label "nested: Some value"
-        Left _ -> safePutStrLn @ABC $ label "nested: Failed"
+        Right e -> safePutStrLn @ABC $ label "Labeled : Some value"
+        Left _ -> safePutStrLn @ABC $ label "Labeled : Failed"
+       )
+
+  con' <- (abc, client, abc, fromClient) `sLocally` \un -> do  -- nested with IO 
+    restrict abc (\_ -> do 
+        sSelect'' (sSelect'' (sCompare'' (return (un a')) (return (un b'))) 
+         (sCompare'' (return (un b')) (return (un c')))) (sCompare'' (return (un a')) (return (un c'))))
+  
+  (abc, client, abc, fromClient) `sLocally` \un -> do
+    use @_ @ABC @ABC @ABC (un con') (\d' -> do 
+      case d' of 
+        Right e -> safePutStrLn @ABC $ label "nested IO : Some value"
+        Left _ -> safePutStrLn @ABC $ label "nested IO : Failed"
        )
 
   ab <- (abc, client, abc, fromClient) `sLocally` \un -> do
