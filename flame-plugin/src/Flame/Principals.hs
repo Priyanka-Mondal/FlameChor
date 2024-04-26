@@ -10,10 +10,12 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 
+
 module Flame.Principals
        ( KPrin (..)
        , SPrin (..)
        , C, I, type (^->), type (^→), type (^<-), type (^←)
+       , A
        , N, Public, Secret, Trusted, Untrusted, PT, SU 
        , DPrin (st, dyn), Ex(..) 
        , withPrin, promote
@@ -50,6 +52,7 @@ data KPrin =
   | KInteg KPrin
   | KVoice KPrin
   | KEye   KPrin
+  | KAvail KPrin
 
 {-| 
 Singleton GADT for KPrin. This GADT associates a KPrin (which is an
@@ -68,6 +71,7 @@ data SPrin :: KPrin -> * where
   SInteg :: !(SPrin p) -> SPrin (KInteg p)
   SVoice :: !(SPrin p) -> SPrin (KVoice p)
   SEye   :: !(SPrin p) -> SPrin (KEye   p)
+  SAvail  :: !(SPrin p) -> SPrin (KConf p)
 
 deriving instance Show (SPrin p)
 deriving instance Eq (SPrin p)
@@ -82,6 +86,7 @@ type (^<-) p  = KInteg p
 type Voice p  = KVoice p
 type Eye p    = KEye p
 type N s      = KName s
+type A p      = KConf p
 
 type (/\) p q = KConj p q
 type p ∧ q  = KConj p q
@@ -97,26 +102,35 @@ type (Δ) p = Eye p
 
 -- TODO: convert flow join/meet to type families so that
 --       resulting types are more normalized
-type (⊔) p q  = (C p ∧ C q) ∧ (I p ∨ I q)
+--type (⊔) p q  = (C p ∧ C q) ∧ (I p ∨ I q)
+type (⊔) p q  = (C p ∧ C q) ∧ (I p ∨ I q) ∧ (A p ∨ A q) 
 infixl 6 ⊔
-type (⊓) p q  = (C p ∨ C q) ∧ (I p ∧ I q)
+--type (⊓) p q  = (C p ∨ C q) ∧ (I p ∧ I q)
+type (⊓) p q  = (C p ∨ C q) ∧ (I p ∧ I q) ∧ (A p ∧ A q)
 infixl 6 ⊓
 
 type (⊤) = KTop
 type (⊥) = KBot
 type Public   = C KBot
 type Trusted  = I KTop
-type PT       = Public ∧ Trusted 
+type Available  = A KTop
+type PT       = Public ∧ Trusted  -- ?? PTA :PM 
+type PTA = Public ∧ Trusted ∧ Available
 
 type Secret = C KTop
 type Untrusted  = I KBot
-type SU       = Secret ∧ Untrusted
+type Unavailable  = A KBot
+type SU       = Secret ∧ Untrusted -- ?? SUU :PM
+type SUU       = Secret ∧ Untrusted ∧ Unavailable
 
 (*->) p   = SConf p
 (*→)  p   = SConf p
 
 (*<-) p   = SInteg p
 (*←) p   = SInteg p
+
+(*|^) p   = SAvail p
+--(*←) p   = SAvail p
 
 (*∇)  p = SVoice p
 
@@ -126,23 +140,31 @@ type SU       = Secret ∧ Untrusted
 (*\/) p q  = SDisj p q
 (*∨)  p q  = SDisj p q
 
-(*⊔)  p q  = ((p*→) *∧ (q*→)) *∧ ((p*←) *∨ (q*←))
-(*⊓)  p q  = ((p*→) *∨ (q*→)) *∧ ((p*←) *∧ (q*←))
+(*⊔)  p q  = ((p*→) *∧ (q*→)) *∧ ((p*←) *∨ (q*←)) *∧ ((p*|^) *∨ (q*|^))
+(*⊓)  p q  = ((p*→) *∨ (q*→)) *∧ ((p*←) *∧ (q*←)) *∧ ((p*|^) *∧ (q*|^))
 
 public :: SPrin Public
 public = SConf SBot
 trusted  :: SPrin Trusted
 trusted  = SInteg STop
+available  :: SPrin Available
+available  = SAvail STop
 publicTrusted :: SPrin PT
-publicTrusted = public *∧ trusted
+publicTrusted = public *∧ trusted -- ?? publicTrustedAvailable :PM 
+publicTrustedAvailable :: SPrin PTA
+publicTrustedAvailable = public *∧ trusted *∧ available -- ?? publicTrustedAvailable :PM 
+
 
 secret :: SPrin Secret
-secret = (SConf STop)
+secret = SConf STop
 untrusted  :: SPrin Untrusted
-untrusted  = (SInteg SBot)
+untrusted  = SInteg SBot
+unavailable  :: SPrin Unavailable
+unavailable  = SAvail SBot
 secretUntrusted :: SPrin SU
-secretUntrusted = secret *∧ untrusted
-
+secretUntrusted = secret *∧ untrusted  -- ?? secretUntrustedUnavailable : PM
+secretUntrustedUnavailable :: SPrin SUU
+secretUntrustedUnavailable = secret *∧ untrusted *∧ unavailable
 {- Existential wrapper -}
 data Ex (p :: k -> *) where
   Ex :: p i -> Ex p
@@ -163,6 +185,7 @@ promoteS p =
                                  Ex q' -> Ex (SDisj p' q')
     (Conf p)    ->  case promoteS p of Ex p' -> Ex (SConf p')
     (Integ p)   ->  case promoteS p of Ex p' -> Ex (SInteg p')
+    (Avail p)   ->  case promoteS p of Ex p' -> Ex (SAvail p')
 
 {- Bind runtime principal to type -}
 withPrin :: Prin -> (forall p . DPrin p -> a) -> a
@@ -204,6 +227,10 @@ bot = (⊥)
 (^←) :: DPrin p  -> DPrin (I p)
 (^←) p = Integ (dyn p) <=> SInteg (st p)
 (^<-) = (^←)
+-- PM as we dont have DPrins in FLAQR, we can skip this ?
+(^|^) :: DPrin p  -> DPrin (A p)
+(^|^) p = Avail (dyn p) <=> SAvail (st p)
+--(^<-) = (^←)
 
 (∧) :: DPrin p -> DPrin q -> DPrin (p ∧ q) 
 (∧) p q = Conj (dyn p) (dyn q) <=> SConj (st p) (st q)
@@ -214,13 +241,15 @@ bot = (⊥)
 (\/) = (∨)
 
 (⊔) :: DPrin p -> DPrin q -> DPrin (p ⊔ q) 
-(⊔)  p q  = (Conj (Conf (Conj (dyn p) (dyn q)))
-             (Integ (Disj (dyn p) (dyn q)))) <=> ((st p) *⊔ (st q))
+(⊔)  p q  = Conj (Conf (Conj (dyn p) (dyn q)))
+             (Conj (Integ (Disj (dyn p) (dyn q)))
+             (Avail (Disj (dyn p) (dyn q)))) <=> (st p *⊔ st q)
 join = (⊔)
 
 (⊓) :: DPrin p -> DPrin q -> DPrin (p ⊓ q) 
-(⊓) p q  = (Conj (Conf (Disj (dyn p) (dyn q)))
-            (Integ (Conj (dyn p) (dyn q)))) <=> ((st p) *⊓ (st q))
+(⊓) p q  = Conj (Conf (Disj (dyn p) (dyn q)))
+            (Conj (Integ (Conj (dyn p) (dyn q)))
+            (Avail (Conj (dyn p) (dyn q)))) <=> (st p *⊓ st q)
 meet = (⊓)
 
 (∇) :: DPrin p -> DPrin ((∇) p)
@@ -229,7 +258,8 @@ meet = (⊓)
 δ :: DPrin p -> DPrin (Δ p)
 δ p = eyeOf (dyn p) <=> SEye (st p)
 
-{-| Actsfor constraints. This type family is closed: only the Flame solver is capable of resolving these constraints.  |-}
+{-| Actsfor constraints. This type family is closed: 
+only the Flame solver is capable of resolving these constraints.  |-}
 type family (≽) (p :: KPrin) (q :: KPrin) :: Constraint where
 infixl 4 ≽
 
@@ -238,7 +268,7 @@ information flow relation is defined in terms of the acts-for
 relation. -}
 type (>=) (p :: KPrin) (q :: KPrin) = (p ≽ q) 
 infixl 4 >=
-type (⊑) (p :: KPrin) (q :: KPrin) = (C q ≽ C p , I p ≽ I q) 
+type (⊑) (p :: KPrin) (q :: KPrin) = (C q ≽ C p , I p ≽ I q, A p ≽ A q) 
 infixl 4 ⊑
 type (<:) (p :: KPrin) (q :: KPrin) = (p ⊑ q)
 infixl 4 <:

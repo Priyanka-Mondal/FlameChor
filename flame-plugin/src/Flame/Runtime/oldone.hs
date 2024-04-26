@@ -2,7 +2,6 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE PostfixOperators #-}
 
-
 module Flame.Runtime.Principals
        ( Prin(..)
        , ActsForProof(..)
@@ -11,6 +10,7 @@ module Flame.Runtime.Principals
        , normalize, actsFor, computeDelClosures
        )
 where
+
 import Data.Data
 import Control.Arrow  ((***))
 import Data.Maybe     (mapMaybe)
@@ -29,22 +29,19 @@ data Prin =
   | Disj  Prin Prin
   | Conf  Prin
   | Integ Prin
-  | Avail Prin
   deriving (Ord, Read, Eq, Show, Data, Typeable)
 
 public        = Conf Bot
 trusted       = Integ Top
-available = Avail Top
-publicTrusted = Conj public trusted     
-publicTrustedAvailable =  Conj public (Conj trusted available)      
+publicTrusted = Conj public trusted           
 
 voiceOf :: Prin -> Prin
-voiceOf p = let (N conf _ _) = normPrin p in
-              reify $ N (J [M [B]]) conf (J [M [B]])
+voiceOf p = let (N conf _) = normPrin p in
+              reify $ N (J [M [B]]) conf
 
 eyeOf :: Prin -> Prin
-eyeOf p = let (N _ integ _) = normPrin p in
-              reify $ N integ (J [M [B]]) (J [M [B]])
+eyeOf p = let (N _ integ) = normPrin p in
+              reify $ N integ (J [M [B]])
 
 -------------------------- Acts for ----------------------------
 
@@ -66,7 +63,7 @@ actsFor :: [(Prin, Prin)]-- ^ [D]elegations
            -> (Prin , Prin)
            -> Maybe ActsForProof
 actsFor delegations (Top, q) = Just AFTop
-actsFor delegations (p , Bot) = Just AFBot  -- one more for r
+actsFor delegations (p , Bot) = Just AFBot
 actsFor delegations (p,q)
   | p == q    = Just AFRefl
   | otherwise = --pprTrace "actsFor" (ppr (p,q)) $
@@ -74,23 +71,19 @@ actsFor delegations (p,q)
         let q' = normPrin q in do
           confPf <- confActsFor (conf p', conf q')
           integPf <- integActsFor (integ p', integ q')
-          availPf <- availActsFor (avail p', avail q')
           Just $ AFConj [confPf, integPf]
   where
     top :: Norm
-    top = N (J [M [T]]) (J [M [T]]) (J [M [T]])
+    top = N (J [M [T]]) (J [M [T]])
     bot :: Norm
-    bot = N (J [M [B]]) (J [M [B]]) (J [M [B]])
+    bot = N (J [M [B]]) (J [M [B]])
 
-    (confClosure, integClosure, availClosure) = computeDelClosures delegations
+    (confClosure, integClosure) = computeDelClosures delegations
 
     confActsFor :: (JNorm, JNorm) -> Maybe ActsForProof
     confActsFor = actsForJ True confClosure 
     integActsFor :: (JNorm, JNorm) -> Maybe ActsForProof
     integActsFor = actsForJ False integClosure
-    availActsFor :: (JNorm, JNorm) -> Maybe ActsForProof
-    availActsFor = actsForJ False availClosure
-
 
 actsForJ :: Bool ->
             DelClosure ->
@@ -167,7 +160,7 @@ actsForB isConf delClosure (p,q)
     case find (== J [M [p]]) (superiors $ J [M [q]]) of
       Just del -> if isConf then
                      Just $ AFDel (Conf (reifyBase p), Conf (reifyBase q))
-                  else 
+                  else
                      Just $ AFDel (Integ (reifyBase p), Integ (reifyBase q))
       _ -> Nothing
   where
@@ -207,22 +200,21 @@ newtype JNorm = J { unJ :: [MNorm]}
 -- | A principal in FLAM Join Normal Form
 -- Each Norm is a join of two principals: the confidentiality projection and the
 -- integrity projection, each in JNF.
-data Norm = N {conf :: JNorm, integ :: JNorm, avail :: JNorm}
+data Norm = N {conf :: JNorm, integ :: JNorm}
   deriving (Eq, Ord, Show)
 
 -- | Convert a 'Prin' to a 'JNorm' term
 normPrin :: Prin -> Norm
-normPrin Top        = N (J [M [T]]) (J [M [T]]) (J [M [T]]) 
-normPrin Bot        = N (J [M [B]]) (J [M [B]]) (J [M [B]])
-normPrin (Name s)   = N (J [M [P s]]) (J [M [P s]]) (J [M [P s]])
-normPrin (Conf p)   = N (jnormPrin True p) (J [M [B]]) (J [M [B]]) 
-normPrin (Integ p)  = N (J [M [B]]) (jnormPrin False p) (J [M [B]])
-normPrin (Avail p)  = N (J [M [B]]) (J [M [B]]) (jnormPrin False p)
+normPrin Top        = N (J [M [T]]) (J [M [T]])
+normPrin Bot        = N (J [M [B]]) (J [M [B]])
+normPrin (Name s)   = N (J [M [P s]]) (J [M [P s]])
+normPrin (Conf p)   = N (jnormPrin True p) (J [M [B]]) 
+normPrin (Integ p)  = N (J [M [B]]) (jnormPrin False p)
 normPrin (Conj p q) = mergeNormJoin (normPrin p) (normPrin q)
 normPrin (Disj p q) = mergeNormMeet (normPrin p) (normPrin q)
 
 reify :: Norm -> Prin
-reify (N c i a) = Conj (Conf $ reifyJ c) (Conj (Integ $ reifyJ i) (Avail $ reifyJ a))
+reify (N c i) = Conj (Conf $ reifyJ c) (Integ $ reifyJ i)
   where
  reifyJ :: JNorm -> Prin
  reifyJ (J [m])    = reifyM m
@@ -281,8 +273,8 @@ mergeM (M [T]) _ = Left (M [T])                   -- ⊤ ∧ x       ==>  ⊤
 mergeM _ (M [T]) = Left (M [T])                   -- x ∧ ⊤       ==>  ⊤ 
 mergeM (M (B:_)) r = Left r                       -- ⊥ ∧ x       ==>  x 
 mergeM l (M (B:_)) = Left l                       -- x ∧ ⊥       ==>  x
-mergeM (M [l]) (M rs) | l `elem` rs = Left (M [l])  -- x ∧ (x ∨ y) ==>  x
-mergeM (M ls) (M [r]) | r `elem` ls = Left (M [r])  -- (x ∨ y) ∧ x  ==>  x
+mergeM (M [l]) (M rs) | elem l rs = Left (M [l])  -- x ∧ (x ∨ y) ==>  x
+mergeM (M ls) (M [r]) | elem r ls = Left (M [r])  -- (x ∨ y) ∧ x  ==>  x
 mergeM l r | l == r = Left l                      -- y ∧ y    ==>  y
 mergeM l _ = Right l
 
@@ -330,12 +322,12 @@ mergeJNormMeet (J ms1) (J ms2)
 
 -- | Merge two Norm terms by join
 mergeNormJoin :: Norm -> Norm -> Norm 
-mergeNormJoin (N c1 i1 a1) (N c2 i2 a2) = N (mergeJNormJoin c1 c2) (mergeJNormJoin i1 i2) (mergeJNormJoin a1 a2)
+mergeNormJoin (N c1 i1) (N c2 i2) = N (mergeJNormJoin c1 c2) (mergeJNormJoin i1 i2)
 {-# INLINEABLE mergeNormJoin #-}
 
 -- | Merge two Norm terms by meet
 mergeNormMeet :: Norm -> Norm -> Norm
-mergeNormMeet (N c1 i1 a1) (N c2 i2 a2) = N (mergeJNormMeet c1 c2) (mergeJNormMeet i1 i2) (mergeJNormMeet a1 a2)
+mergeNormMeet (N c1 i1) (N c2 i2) = N (mergeJNormMeet c1 c2) (mergeJNormMeet i1 i2)
 {-# INLINEABLE mergeNormMeet #-}
 
 -- | Convert a 'Prin' to a 'JNorm' term
@@ -347,15 +339,15 @@ jnormPrin isConf (Name s) = J [M [P s]]
 jnormPrin isConf (Conf p) = 
   if isConf then jnormPrin isConf p else J [M [B]]
 jnormPrin isConf (Integ p) = 
-  if isConf then J [M [B]] else jnormPrin isConf p 
-jnormPrin isConf (Avail p) = 
-  if isConf then J [M [B]] else jnormPrin isConf p --- for avail some cases missing PM ?? 
+  if isConf then J [M [B]] else jnormPrin isConf p
 jnormPrin isConf (Conj p q) =
   mergeJNormJoin (jnormPrin isConf p) (jnormPrin isConf q)
 jnormPrin isConf (Disj p q) =
   mergeJNormMeet (jnormPrin isConf p) (jnormPrin isConf q)
 
+
 --------------------- Delegation closures ------------------------------------
+
 {-
     - expand given constraints to "base form": conf or integ, no RHS conj, no LHS disj
     - for each conjunction on the LHS, add a pseudo-node to the graph that is
@@ -366,35 +358,35 @@ jnormPrin isConf (Disj p q) =
         the inferiors of each disjunct.
     - fixpoint?
 -}
-computeDelClosures :: [(Prin,Prin)] -> (DelClosure, DelClosure, DelClosure) 
-computeDelClosures dels = let (confGivens, integGivens, availGivens) = expandGivens dels in
-                           (givenClosure confGivens, givenClosure integGivens, givenClosure availGivens)
+computeDelClosures :: [(Prin,Prin)] -> (DelClosure, DelClosure) 
+computeDelClosures dels = let (confGivens, integGivens) = expandGivens dels in
+                           (givenClosure confGivens, givenClosure integGivens)
 
 -- | Expand given delegations to "base form".  Base-form delegations are split
 --   into confidentiality delegations and integrity delegations, have no meets
 --   on the left-hand side, and no joins on the right-hand side.
 --   Thus, base-form delegations all have the form: (b ∧ b ...) ≽ (b ∨ b ...)
 expandGivens :: [(Prin,Prin)]
-             -> ([(JNorm,JNorm)], [(JNorm,JNorm)],[(JNorm,JNorm)])
+             -> ([(JNorm,JNorm)], [(JNorm,JNorm)])
 expandGivens givens = foldl
-                      (\(cacc, iacc, aacc) given ->
+                      (\(cacc, iacc) given ->
                         case given of
-                          (N supJC supJI supJA, N (J infMCs) (J infMIs) (J infMAs)) -> --added _ randomly
+                          (N supJC supJI, N (J infMCs) (J infMIs)) -> 
                             ([(supC, J [infC]) | supC <- cartProd supJC, infC <- infMCs] ++ cacc,
-                             [(supI, J [infI]) | supI <- cartProd supJI, infI <- infMIs] ++ iacc,
-                             [(supA, J [infA]) | supA <- cartProd supJA, infA <- infMAs] ++ aacc)
+                             [(supI, (J [infI])) | supI <- cartProd supJI, infI <- infMIs] ++ iacc)
                       )
-                      ([] :: [(JNorm, JNorm)], [] :: [(JNorm, JNorm)], [] :: [(JNorm, JNorm)])
+                      ([] :: [(JNorm, JNorm)], [] :: [(JNorm, JNorm)])
                       [(normPrin p, normPrin q) | (p, q) <- givens]
   
 -- | Compute closure of given delegations.  Expects delegations to be in base form.
-givenClosure :: [(JNorm, JNorm)] -> DelClosure
+givenClosure :: [(JNorm,JNorm)] -> DelClosure
 givenClosure givens =
+
   [(inferior, superiors) | (inferior, _, superiors) <- fixpoint initialEdges]
     
   where
-    top = J [M [T]]
-    bot = J [M [B]]
+    top = (J [M [T]])
+    bot = (J [M [B]])
     baseSeqToJ seq = J [M seq]
     {-
       For principals in a given in base form, 
@@ -414,7 +406,7 @@ givenClosure givens =
       ++ concat [structMeetEdges (J [M sup]) | sup <- subsequencesOfSize (length seq - 1) seq]
 
     initialEdges :: [(JNorm, JNorm, [JNorm])]
-    initialEdges = [(inf, inf, inf, union (union (nub [gsup | (gsup, ginf, gavail) <- givens, ginf == inf])
+    initialEdges = [(inf, inf, union (union (nub [gsup | (gsup, ginf) <- givens, ginf == inf])
                                             $ concat [jsups | (jinf, _, jsups) <- structJoinEdges inf, jinf == inf])
                                      $ concat [msups | (minf, _, msups) <- structJoinEdges inf, minf == inf])
                     | inf <- principals]
@@ -422,9 +414,9 @@ givenClosure givens =
     principals :: [JNorm]
     principals = [top, bot] ++ (nub $ concat [(map J $ concat [subsequencesOfSize i psC | i <- [1..length psC]]) ++
                                               (map baseSeqToJ $ concat [subsequencesOfSize i qs | i <- [1..length qs]])
-                                             | (J psC, J [M qs], J psA) <- givens])
+                                             | (J psC, J [M qs]) <- givens])
 
-    fixpoint edges = let (graph, vtxToEdges, _, prinToVtx) = graphFromEdges edges in
+    fixpoint edges = let (graph, vtxToEdges, prinToVtx) = graphFromEdges edges in
                      let vtxToPrin v = let (x, _, _) = vtxToEdges v in x in
                      let newEdges = [(vtxToPrin inf, vtxToPrin inf, 
                                                         (map vtxToPrin $ reachable graph inf) ++
