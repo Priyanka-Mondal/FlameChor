@@ -5,9 +5,9 @@ Maintainer :  Christiaan Baaij <christiaan.baaij@gmail.com>
 -}
 
 {-# LANGUAGE CPP                        #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MagicHash                  #-}
-{-# LANGUAGE RecordWildCards            #-}
+--{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+--{-# LANGUAGE MagicHash                  #-}
+--{-# LANGUAGE RecordWildCards            #-}
 
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 #if __GLASGOW_HASKELL__ < 801
@@ -60,7 +60,8 @@ import Flame.Solver.ActsFor
 --
 {- | Collect the free variables of a normalized principal -}
 fvNorm :: CoreNorm -> UniqSet TyVar
-fvNorm (N conf integ) = fvJNorm conf `unionUniqSets` fvJNorm integ
+fvNorm (N conf integ avail) =  unionUniqSets (fvJNorm conf) 
+                                      (unionUniqSets (fvJNorm integ) (fvJNorm avail)) 
 
 -- | Find the 'TyVar' in a 'CoreJNorm'
 fvJNorm :: CoreJNorm -> UniqSet TyVar

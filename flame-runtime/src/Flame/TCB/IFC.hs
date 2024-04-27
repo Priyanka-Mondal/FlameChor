@@ -1,5 +1,6 @@
-{-# LANGUAGE GADTs, PolyKinds, KindSignatures, MultiParamTypeClasses,
-    DataKinds, RankNTypes, FlexibleInstances, FlexibleContexts, TypeFamilies #-}
+{-# LANGUAGE GADTs, PolyKinds, MultiParamTypeClasses, DataKinds, RankNTypes #-}
+{-# LANGUAGE FlexibleInstances, FlexibleContexts, TypeFamilies #-}
+{-# LANGUAGE  KindSignatures #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE FunctionalDependencies #-}
@@ -11,7 +12,11 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# OPTIONS_GHC -fplugin Flame.Solver -fobject-code #-}
+--{-# OPTIONS_GHC -fplugin Flame.Solver -fobject-code #-}
 
+{- HLINT ignore "Redundant $" -}
+{- HLINT ignore "Redundant bracket" -}
+{- HLINT ignore "Use camelCase" -}
 module Flame.TCB.IFC where
 
 import Data.Proxy (Proxy(..))

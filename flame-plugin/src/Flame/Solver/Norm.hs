@@ -1,4 +1,8 @@
 {-# LANGUAGE CPP #-}
+{-HLint ignore "Use infix" -}
+{-HLint ignore "Redundant bracket" -}
+{-HLint ignore "Eta reduce" -}
+{-HLint ignore "Redundant <$>"-}
 module Flame.Solver.Norm where
 
 import Flame.Solver.Data  
@@ -112,64 +116,64 @@ mergeJNormMeet (J ms1) (J ms2)
 
 -- | Merge two Norm terms by join
 mergeNormJoin :: (Ord v, Ord c) => Norm v c -> Norm v c -> Norm v c
-mergeNormJoin (N c1 i1) (N c2 i2) = N (mergeJNormJoin c1 c2) (mergeJNormJoin i1 i2)
+mergeNormJoin (N c1 i1 a1) (N c2 i2 a2) = N (mergeJNormJoin c1 c2) (mergeJNormJoin i1 i2) (mergeJNormJoin i1 i2)
 {-# INLINEABLE mergeNormJoin #-}
 
 -- | Merge two Norm terms by meet
 mergeNormMeet :: (Ord v, Ord c) => Norm v c -> Norm v c -> Norm v c
-mergeNormMeet (N c1 i1) (N c2 i2) = N (mergeJNormMeet c1 c2) (mergeJNormMeet i1 i2)
+mergeNormMeet (N c1 i1 a1) (N c2 i2 a2) = N (mergeJNormMeet c1 c2) (mergeJNormMeet i1 i2) (mergeJNormMeet a1 a2)
 {-# INLINEABLE mergeNormMeet #-}
  
 -- | Convert a type of /kind/ 'Flame.Principals.KPrin' to a 'JNorm' term
 -- flrec contains the KPrin type constructors
 -- isConf indicates whether we are normalizing the conf component
-jnormPrin :: FlameRec -> Bool -> Type -> Maybe CoreJNorm
-jnormPrin flrec isConf ty | Just ty1 <- coreView ty = jnormPrin' ty1
-  where jnormPrin' = jnormPrin flrec isConf
-jnormPrin flrec isConf (TyVarTy v) = return $ J [M [V v]]
-jnormPrin flrec isConf (TyConApp tc [])
+jnormPrin :: FlameRec -> Bool -> Bool -> Type -> Maybe CoreJNorm
+jnormPrin flrec isConf isInteg ty | Just ty1 <- coreView ty = jnormPrin' ty1
+  where jnormPrin' = jnormPrin flrec isConf isInteg
+jnormPrin flrec isConf isInteg (TyVarTy v) = return $ J [M [V v]]
+jnormPrin flrec isConf isInteg (TyConApp tc [])
   | tc == (ktop flrec) = return $ J [M [T]]
   | tc == (kbot flrec) = return $ J [M [B]]
-jnormPrin flrec isConf (TyConApp tc [x])
+jnormPrin flrec isConf isInteg (TyConApp tc [x])
   | tc == (kname flrec) = return $ J [M [P x]]
   | tc == (kconf flrec) =
-    if isConf then jnormPrin' x else return $ J [M [B]]
+    if isConf then jnormPrin' x else return $ J [M [B]] -- more cases for avail
   | tc == (kinteg flrec) = 
-    if isConf then return $ J [M [B]] else jnormPrin' x
+    if isConf then return $ J [M [B]] else jnormPrin' x -- more cases for avail
   | tc == (kvoice flrec) =
     if isConf then return $ J [M [B]] else integ <$> voiceOf <$> (normPrin flrec x)
   | tc == (keye flrec) =
     if isConf then conf <$> eyeOf <$> (normPrin flrec x) else return $ J [M [B]]
-  where jnormPrin' = jnormPrin flrec isConf
-jnormPrin flrec isConf (TyConApp tc [x,y])
+  where jnormPrin' = jnormPrin flrec isConf isInteg 
+jnormPrin flrec isConf isInteg (TyConApp tc [x,y])
   | tc == (kconj flrec) = mergeJNormJoin <$> jnormPrin' x <*> jnormPrin' y
   | tc == (kdisj flrec) = mergeJNormMeet <$> jnormPrin' x <*> jnormPrin' y
-  where jnormPrin' = jnormPrin flrec isConf
-jnormPrin flrec isConf ty = -- pprTrace "unexpected principal: " (ppr ty) $
-                     return $ (J [M [U ty]])
+  where jnormPrin' = jnormPrin flrec isConf isInteg
+jnormPrin flrec isConf isInteg ty = -- pprTrace "unexpected principal: " (ppr ty) $
+                     return  ((J [M [U ty]]))
 
 ---- | Convert a type of /kind/ 'Flame.Principals.KPrin' to a 'JNorm' term
 normPrin :: FlameRec -> Type -> Maybe CoreNorm
 normPrin flrec ty
   | Just ty1 <- coreView ty = normPrin flrec ty1
-normPrin flrec (TyVarTy v) = return $ N (J [M [V v]]) (J [M [V v]])
+normPrin flrec (TyVarTy v) = return $ N (J [M [V v]]) (J [M [V v]]) (J [M [V v]])
 normPrin flrec (TyConApp tc [])
-  | tc == (ktop flrec) = return $ N (J [M [T]]) (J [M [T]])
-  | tc == (kbot flrec) = return $ N (J [M [B]]) (J [M [B]])
+  | tc == (ktop flrec) = return $ N (J [M [T]]) (J [M [T]]) (J [M [T]])
+  | tc == (kbot flrec) = return $ N (J [M [B]]) (J [M [B]]) (J [M [B]])
 normPrin flrec (TyConApp tc [x])
-  | tc == (kname flrec)  = return $ N (J [M [P x]]) (J [M [P x]])
-  | tc == (kconf flrec)  = N <$> (jnormPrin flrec True x) <*> (Just (J [M [B]]))
-  | tc == (kinteg flrec) = N (J [M [B]]) <$> (jnormPrin flrec False x)
+  | tc == (kname flrec)  = return $ N (J [M [P x]]) (J [M [P x]]) (J [M [P x]])
+  | tc == (kconf flrec)  = N <$> (jnormPrin flrec True False x) <*> (Just (J [M [B]])) <*> (Just (J [M [B]]))
+  | tc == (kinteg flrec) = N (J [M [B]]) <$> (jnormPrin flrec False True x) <*> (Just (J [M [B]]))
   | tc == (kvoice flrec) = voiceOf <$> normPrin flrec x
   | tc == (keye flrec)   = eyeOf <$> normPrin flrec x
 normPrin flrec (TyConApp tc [x,y])
   | tc == (kconj flrec) = mergeNormJoin <$> normPrin flrec x <*> normPrin flrec y 
   | tc == (kdisj flrec) = mergeNormMeet <$> normPrin flrec x <*> normPrin flrec y 
 normPrin flrec ty = -- pprTrace "unexpected principal: " (ppr ty) $
-                     return $ N (J [M [U ty]]) (J [M [U ty]])
+                     return $ N (J [M [U ty]]) (J [M [U ty]]) (J [M [U ty]])
   
 voiceOf :: Norm v s -> Norm v s
-voiceOf (N conf _) = N (J [M [B]]) (wrapVars conf)
+voiceOf (N conf _ _) = N (J [M [B]]) (wrapVars conf) (J [M [B]])
   where
     wrapVars (J ms) = J (map wrapVars' ms)
     wrapVars' (M bs) = M (map wrapVars'' bs)
@@ -181,7 +185,7 @@ voiceOf (N conf _) = N (J [M [B]]) (wrapVars conf)
     wrapVars'' p = p
   
 eyeOf :: Norm v s -> Norm v s
-eyeOf (N _ integ) = N (wrapVars integ) (J [M [B]]) 
+eyeOf (N _ integ _) = N (wrapVars integ) (J [M [B]]) (J [M [B]]) 
   where
     wrapVars (J ms) = J (map wrapVars' ms)
     wrapVars' (M bs) = M (map wrapVars'' bs)
@@ -194,13 +198,15 @@ eyeOf (N _ integ) = N (wrapVars integ) (J [M [B]])
 
 -- | Convert a 'SOP' term back to a type of /kind/ 'GHC.TypeLits.Nat'
 reifyNorm :: FlameRec -> CoreNorm -> Type
-reifyNorm flrec (N cp ip) =
+reifyNorm flrec (N cp ip ap) =
   let c' = reifyJNorm flrec cp in
   let i' = reifyJNorm flrec ip in
+  let a' = reifyJNorm flrec ap in
     mkTyConApp (kconj flrec)
       [mkTyConApp (kconf flrec) [c'],
-       mkTyConApp (kinteg flrec) [i']]
-  where
+       mkTyConApp (kinteg flrec) [i'],
+       mkTyConApp (kavail flrec) [a']]
+ -- where
 
 reifyJNorm :: FlameRec -> CoreJNorm -> Type
 reifyJNorm flrec (J [])     = mkTyConApp (kbot flrec) []
@@ -229,20 +235,21 @@ cartProd (J ms) = [J $ map mkM ps | ps <- sequence [bs | (M bs) <- ms]]
   where mkM p = M [p]
 
 flattenDelegations :: [(Norm v s, Norm v s)]
-                   -> ([(JNorm v s, JNorm v s)], [(JNorm v s, JNorm v s)])
+                   -> ([(JNorm v s, JNorm v s)], [(JNorm v s, JNorm v s)], [(JNorm v s, JNorm v s)])
 flattenDelegations givens = foldl
-                      (\(cacc, iacc) given ->
+                      (\(cacc, iacc, aacc) given ->
                         case given of
                           -- convert to "base form"
                           -- base form is:
                           --  (b ∧ b ...) ≽ (b ∨ b ...)
                           --   joins of base principals on LHS
                           --   meets of base principals on RHS
-                          (N supJC supJI, N (J infMCs) (J infMIs)) -> 
+                          (N supJC supJI supJA, N (J infMCs) (J infMIs) (J infMAs)) -> 
                             ([(supC, J [infC]) | supC <- cartProd supJC, infC <- infMCs] ++ cacc,
-                             [(supI, (J [infI])) | supI <- cartProd supJI, infI <- infMIs] ++ iacc)
+                             [(supI, (J [infI])) | supI <- cartProd supJI, infI <- infMIs] ++ iacc,
+                             [(supA, (J [infA])) | supA <- cartProd supJA, infA <- infMAs] ++ aacc)
                       )
-                      ([] :: [(JNorm v s, JNorm v s)], [] :: [(JNorm v s, JNorm v s)])
+                      ([] :: [(JNorm v s, JNorm v s)], [] :: [(JNorm v s, JNorm v s)], [] :: [(JNorm v s, JNorm v s)])
                       givens
   where
     cartProd (J ms) = [J $ map mkM ps | ps <- sequence [bs | (M bs) <- ms]]
@@ -278,15 +285,15 @@ computeDelClosure givens = -- pprTrace "computing closure from" (ppr givens) $
     structMeetEdges (J [M []]) = [] 
     structMeetEdges (J [M seq]) = 
       {- for each disjunct, add an edge to each subsequence of the disjunct -}
-      [(baseSeqToJ seq, baseSeqToJ seq, map baseSeqToJ $ subsequencesOfSize (length seq - 1) seq)]
-      ++ concat [structMeetEdges (J [M sup]) | sup <- subsequencesOfSize (length seq - 1) seq]
+      (baseSeqToJ seq, baseSeqToJ seq, map baseSeqToJ  (subsequencesOfSize (length seq - 1) seq)):
+       concat [structMeetEdges (J [M sup]) | sup <- subsequencesOfSize (length seq - 1) seq]
     {- for principals in base form, there are no other structural meet edges -}
     structMeetEdges (J seq) = []
 
     initialEdges :: [(CoreJNorm, CoreJNorm, [CoreJNorm])]
     initialEdges = [(inf, inf, sort $ union (union (nub [gsup | (gsup, ginf) <- givens, ginf == inf])
                                             $ concat [jsups | (jinf, _, jsups) <- structJoinEdges inf, jinf == inf])
-                                     $ (concat [msups | (minf, _, msups) <- structMeetEdges inf, minf == inf] ++ [top])
+                                      ((concat [msups | (minf, _, msups) <- structMeetEdges inf, minf == inf] ++ [top]))
                                      )
                     | inf <- principals]
 
@@ -296,9 +303,9 @@ computeDelClosure givens = -- pprTrace "computing closure from" (ppr givens) $
       we want a node for each subsequence of conjuncts and disjuncts
     -}
     principals :: [CoreJNorm]
-    principals = [top, bot] ++ (nub $ concat [(map J $ concat [subsequencesOfSize i psC | i <- [1..length psC]]) ++
-                                              (map baseSeqToJ $ concat [subsequencesOfSize i qs | i <- [1..length qs]])
-                                             | (J psC, J [M qs]) <- givens])
+    principals = [top, bot] ++ (nub  (concat [(map J  (concat [subsequencesOfSize i psC | i <- [1..length psC]])) ++
+                                              (map baseSeqToJ ( concat [subsequencesOfSize i qs | i <- [1..length qs]]))
+                                             | (J psC, J [M qs]) <- givens]))
     -- http://stackoverflow.com/questions/21265454/subsequences-of-length-n-from-list-performance
     subsequencesOfSize :: Int -> [a] -> [[a]]
     subsequencesOfSize n xs = let l = length xs
@@ -321,35 +328,37 @@ computeDelClosure givens = -- pprTrace "computing closure from" (ppr givens) $
     -- TODO: implement
     computeStructEdges (graph, vtxToEdges, prinToVtx) vtx = []
 
-substJNorm :: TcLevel -> CoreBounds -> Bool -> CoreJNorm -> CoreJNorm
-substJNorm level bounds isConf = foldr1 mergeJNormJoin . map (substMNorm level bounds isConf) . unJ
+substJNorm :: TcLevel -> CoreBounds -> Bool -> Bool -> CoreJNorm -> CoreJNorm
+substJNorm level bounds isConf isInteg = foldr1 mergeJNormJoin . map (substMNorm level bounds isConf isInteg) . unJ
 
-substMNorm :: TcLevel -> CoreBounds -> Bool -> CoreMNorm -> CoreJNorm
-substMNorm level bounds isConf = foldr1 mergeJNormMeet . map (substBase level bounds isConf) . unM
+substMNorm :: TcLevel -> CoreBounds -> Bool -> Bool -> CoreMNorm -> CoreJNorm
+substMNorm level bounds isConf isInteg= foldr1 mergeJNormMeet . map (substBase level bounds isConf isInteg) . unM
 
-substBase :: TcLevel -> CoreBounds -> Bool -> CoreBase -> CoreJNorm
-substBase _ _ _ B = jbot
-substBase _ _ _ T = J [M [T]]
-substBase _ _ _ p@(P s) = J [M [p]]
-substBase _ _ _ u@(U s) = J [M [u]]
-substBase level bounds isConf (V tv) | isTouchableMetaTyVar level tv =
+substBase :: TcLevel -> CoreBounds -> Bool -> Bool -> CoreBase -> CoreJNorm
+substBase _ _ _ _ B = jbot
+substBase _ _ _ _ T = J [M [T]]
+substBase _ _ _ _ p@(P s) = J [M [p]]
+substBase _ _ _ _ u@(U s) = J [M [u]]
+substBase level bounds isConf isInteg (V tv) | isTouchableMetaTyVar level tv =
   let s = findWithDefault jbot tv bounds in
    {- pprTrace "subst " (ppr tv <+> ppr s) $-} s
-substBase level bounds isConf (V tv) = J [M [V tv]]
-substBase level bounds isConf (VarVoice tv) | isTouchableMetaTyVar level tv = 
+substBase level bounds isConf isInteg (V tv) = J [M [V tv]]
+substBase level bounds isConf isInteg (VarVoice tv) | isTouchableMetaTyVar level tv = 
   if isConf then
     undefined -- XXX: should have already been removed
-  else
-    integ (voiceOf (N (findWithDefault jbot tv bounds) jbot))
-substBase level bounds isConf (VarVoice tv) = J [M [VarVoice tv]]
-substBase level bounds isConf (VarEye tv) | isTouchableMetaTyVar level tv = 
+  else if isInteg then 
+    integ (voiceOf (N (findWithDefault jbot tv bounds) jbot jbot))
+  else 
+    undefined
+substBase level bounds isConf isInteg (VarVoice tv) = J [M [VarVoice tv]]
+substBase level bounds isConf isInteg (VarEye tv) | isTouchableMetaTyVar level tv = 
   if isConf then 
-    conf (eyeOf (N jbot (findWithDefault jbot tv bounds)))
+    conf (eyeOf (N jbot (findWithDefault jbot tv bounds) jbot))
   else
     undefined -- XXX: should have already been removed
-substBase level bounds isConf (VarEye tv) = J [M [VarEye tv]]
-substBase level bounds isConf (UVoice t) = J [M [UVoice t]]
-substBase level bounds isConf (UEye t) = J [M [UEye t]]
+substBase level bounds isConf isInteg (VarEye tv) = J [M [VarEye tv]]
+substBase level bounds isConf isInteg (UVoice t) = J [M [UVoice t]]
+substBase level bounds isConf isInteg (UEye t) = J [M [UEye t]]
 
 jbot = J [M [B]]
 

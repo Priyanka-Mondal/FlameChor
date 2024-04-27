@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+{- HLint ignore "Use guards" -}
 module Flame.Solver.Data where
 -- External
 import Data.IORef (IORef)
@@ -65,15 +66,15 @@ instance (Eq v, Eq s) => Eq (JNorm v s) where
   (J [M [B]]) == (J []) = True
   (J ms1) == (J ms2) = ms1 == ms2
 
-data Norm v s = N {conf :: JNorm v s, integ :: JNorm v s}
+data Norm v s = N {conf :: JNorm v s, integ :: JNorm v s, avail :: JNorm v s}
   deriving (Ord)
 
 instance (Eq v, Eq s) => Eq (Norm v s) where
-  N c1 i1 == N c2 i2 = c1 == c2 && i1 == i2
+  N c1 i1 a1 == N c2 i2 a2 = c1 == c2 && i1 == i2 && a1 == a2
 
 instance (Outputable v, Outputable s)  => Outputable (Norm v s) where
-  ppr (N c i) = case (pprSimple c, pprSimple i) of
-                  (cS, iS) -> cS <+> text "→ ∧ " <+> iS <+> text "←"
+  ppr (N c i a) = case (pprSimple c, pprSimple i, pprSimple a) of
+                  (cS, iS, aS) -> cS <+> text "→ ∧ " <+> iS <+> text "←∧ " <+> aS <+> text "|^"
     where
       pprSimple (J [M [P s]]) = ppr s
       pprSimple (J [M [U s]]) = ppr s
@@ -121,30 +122,38 @@ data FlameRec = FlameRec {
    kdisj        :: TyCon,
    kconf        :: TyCon,
    kinteg       :: TyCon,
+   kavail       :: TyCon,
    kvoice       :: TyCon,
    keye         :: TyCon,
    actsfor      :: TyCon,
    confClosure  :: CoreDelClosure,
    integClosure :: CoreDelClosure,
+   availClosure :: CoreDelClosure,
    confBounds   :: CoreBounds,
    integBounds  :: CoreBounds,
+   availBounds  :: CoreBounds,
    tclevel      :: TcLevel
  }
 
-getBounds :: FlameRec -> Bool -> CoreBounds
-getBounds flrec isConf =
+getBounds :: FlameRec -> Bool-> Bool -> CoreBounds
+getBounds flrec isConf isInteg =
   if isConf then
     confBounds flrec
-  else
+  else if isInteg then
     integBounds flrec
-
-updateBounds :: FlameRec -> Bool -> [(TyVar, JNorm TyVar Type)] -> FlameRec
-updateBounds flrec isConf newBnds =
+  else 
+    availBounds flrec
+-- what about the availbounds
+updateBounds :: FlameRec -> Bool-> Bool -> [(TyVar, JNorm TyVar Type)] -> FlameRec
+updateBounds flrec isConf isInteg newBnds =
  if isConf then
-   flrec{confBounds = fromList newBnds `union` getBounds flrec isConf}
- else
-   flrec{integBounds = fromList newBnds `union` getBounds flrec isConf}
-
+   flrec{confBounds = fromList newBnds `union` getBounds flrec isConf False}
+ else if isInteg then
+   flrec{integBounds = fromList newBnds `union` getBounds flrec False isInteg}
+ else 
+   flrec{availBounds = fromList newBnds `union` getBounds flrec False False}
+ 
+-- what about the availbounds
 data SimplifyResult
   = Simplified ([(EvTerm,Ct)],[Ct])
   | Impossible ActsForCt

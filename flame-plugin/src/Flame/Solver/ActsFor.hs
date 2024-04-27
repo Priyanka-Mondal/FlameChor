@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{- HLint ignore "Use mapM" "Avoid lambda"-}
 module Flame.Solver.ActsFor
        ( ActsForProof(..)
        , actsFor
@@ -40,21 +41,22 @@ actsFor flrec p q
   | q == bot = Just AFBot
   | p == q   = Just AFRefl
   | otherwise = do
-          confPf <- actsForJ flrec True (conf p) (conf q)
-          integPf <- actsForJ flrec False (integ p) (integ q)
+          confPf <- actsForJ flrec True False (conf p) (conf q)
+          integPf <- actsForJ flrec False True (integ p) (integ q)
+          integPf <- actsForJ flrec False False (avail p) (avail q)
           Just $ AFConj [confPf, integPf]
   where
     top :: CoreNorm
-    top = N (J [M [T]]) (J [M [T]])
+    top = N (J [M [T]]) (J [M [T]]) (J [M [T]])
     bot :: CoreNorm
-    bot = N (J [M [B]]) (J [M [B]])
+    bot = N (J [M [B]]) (J [M [B]]) (J [M [B]])
     --confActsFor :: CoreJNorm -> CoreJNorm -> Maybe ActsForProof
     --confActsFor = actsForJ (confClosure flrec)
     --integActsFor :: CoreJNorm -> CoreJNorm -> Maybe ActsForProof
     --integActsFor = actsForJ (integClosure flrec)
 
-actsForJ :: FlameRec -> Bool -> CoreJNorm -> CoreJNorm -> Maybe ActsForProof
-actsForJ flrec isConf p q 
+actsForJ :: FlameRec -> Bool -> Bool -> CoreJNorm -> CoreJNorm -> Maybe ActsForProof
+actsForJ flrec isConf isInteg p q 
   | p == top  = Just AFTop
   | q == bot  = Just AFBot
   | p == q    = Just AFRefl
@@ -69,7 +71,7 @@ actsForJ flrec isConf p q
     conjProofs :: Maybe [ActsForProof]
     conjProofs = sequence $ map (\qm ->
                                   case mapMaybe
-                                         (\pm -> actsForM flrec isConf pm qm)
+                                         (\pm -> actsForM flrec isConf isInteg pm qm)
                                          pms
                                   of
                                     (pf:pfs) ->
@@ -78,9 +80,9 @@ actsForJ flrec isConf p q
                                 )
                                 qms
 
-actsForM :: FlameRec -> Bool -> CoreMNorm -> CoreMNorm ->
+actsForM :: FlameRec -> Bool -> Bool -> CoreMNorm -> CoreMNorm ->
             Maybe ActsForProof
-actsForM flrec isConf p q
+actsForM flrec isConf isInteg p q
   | p == top  = Just AFTop
   | q == bot  = Just AFBot
   | p == q    = Just AFRefl
@@ -95,7 +97,7 @@ actsForM flrec isConf p q
     disjProofs :: Maybe [ActsForProof]
     disjProofs = sequence $ map (\pb ->
                                   case mapMaybe (\qb ->
-                                                  actsForB flrec isConf pb qb)
+                                                  actsForB flrec isConf isInteg pb qb)
                                                 qbs
                                   of
                                     (pf:pfs) -> Just pf
@@ -104,9 +106,9 @@ actsForM flrec isConf p q
                                 pbs
 -- IDEA for transitivity.  If all given dels are expressed "primitively",
 -- then transitivity can be exploited as simple reachability via given dels.
-actsForB :: FlameRec -> Bool -> CoreBase -> CoreBase ->
+actsForB :: FlameRec -> Bool -> Bool -> CoreBase -> CoreBase ->
             Maybe ActsForProof
-actsForB flrec isConf _p _q 
+actsForB flrec isConf isInteg _p _q 
   | p == top = Just AFTop
   | q == bot = Just AFBot
   | p == q  = Just AFRefl
@@ -121,12 +123,12 @@ actsForB flrec isConf _p _q
     top = J [M [T]]
     bot :: CoreJNorm
     bot = J [M [B]]  
-    bounds = if isConf then confBounds flrec else integBounds flrec
+    bounds = if isConf then confBounds flrec else if isInteg then integBounds flrec else availBounds flrec
     --      XXX : what about structural superiors!?
     --      might need to iterate on fixpoint here again
-    delClosure = if isConf then confClosure flrec else integClosure flrec
+    delClosure = if isConf then confClosure flrec else if isInteg then integClosure flrec else availClosure flrec
     superiors :: CoreJNorm -> [CoreJNorm]
     superiors q = case find ((== q) . fst) delClosure of
-                    Just (q, sups) -> map (substJNorm (tclevel flrec) bounds isConf) sups
+                    Just (q, sups) -> map (substJNorm (tclevel flrec) bounds isConf isInteg) sups
                     _ | q /= top -> superiors top
                     _ -> []

@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE StandaloneDeriving #-}
+--{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE PostfixOperators #-}
-
+{-HLint ignore "Use mapM" -}
 
 module Flame.Runtime.Principals
        ( Prin(..)
@@ -17,7 +17,6 @@ import Data.Maybe     (mapMaybe)
 import Data.Graph 
 import Data.List
 import Data.Either
-import Data.Data
 import Data.Text      (Text)
 
 -- | The principal data type 
@@ -410,24 +409,24 @@ givenClosure givens =
     structMeetEdges :: JNorm -> [(JNorm, JNorm, [JNorm])]
     structMeetEdges (J [M []]) = [] 
     structMeetEdges (J [M seq]) = 
-      [(baseSeqToJ seq, baseSeqToJ seq, map baseSeqToJ $ subsequencesOfSize (length seq - 1) seq)]
-      ++ concat [structMeetEdges (J [M sup]) | sup <- subsequencesOfSize (length seq - 1) seq]
+      (baseSeqToJ seq, baseSeqToJ seq, map baseSeqToJ (subsequencesOfSize (length seq - 1) seq))
+      : concat [structMeetEdges (J [M sup]) | sup <- subsequencesOfSize (length seq - 1) seq]
 
     initialEdges :: [(JNorm, JNorm, [JNorm])]
-    initialEdges = [(inf, inf, inf, union (union (nub [gsup | (gsup, ginf, gavail) <- givens, ginf == inf])
+    initialEdges = [(inf, inf, union (union (nub [gsup | (gsup, ginf) <- givens, ginf == inf])
                                             $ concat [jsups | (jinf, _, jsups) <- structJoinEdges inf, jinf == inf])
                                      $ concat [msups | (minf, _, msups) <- structJoinEdges inf, minf == inf])
                     | inf <- principals]
 
     principals :: [JNorm]
-    principals = [top, bot] ++ (nub $ concat [(map J $ concat [subsequencesOfSize i psC | i <- [1..length psC]]) ++
-                                              (map baseSeqToJ $ concat [subsequencesOfSize i qs | i <- [1..length qs]])
-                                             | (J psC, J [M qs], J psA) <- givens])
+    principals = [top, bot] ++ nub (concat [map J (concat [subsequencesOfSize i psC | i <- [1..length psC]]) ++
+                                              map baseSeqToJ (concat [subsequencesOfSize i qs | i <- [1..length qs]])
+                                             | (J psC, J [M qs]) <- givens])
 
-    fixpoint edges = let (graph, vtxToEdges, _, prinToVtx) = graphFromEdges edges in
+    fixpoint edges = let (graph, vtxToEdges, prinToVtx) = graphFromEdges edges in
                      let vtxToPrin v = let (x, _, _) = vtxToEdges v in x in
                      let newEdges = [(vtxToPrin inf, vtxToPrin inf, 
-                                                        (map vtxToPrin $ reachable graph inf) ++
+                                                        map vtxToPrin (reachable graph inf) ++
                                                         computeStructEdges (graph, vtxToEdges, prinToVtx) inf)
                                     | inf <- vertices graph] in
                      if edges == newEdges then

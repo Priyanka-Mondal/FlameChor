@@ -22,7 +22,13 @@ To the header of your file.
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TupleSections   #-}
 {-# LANGUAGE CPP #-}
-
+{- HLint ignore "Redundant bracket" -}
+{- HLint ignore "Use guards" -}
+{-HLint ignore "Use const" -}
+{-HLint ignore "Redundant $" -}
+{-HLint ignore "Avoid lambda using `infix`" -}
+{-HLint ignore "Use first" -}
+{-HLint ignore "Use tuple-section"-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 module Flame.Solver
@@ -89,6 +95,7 @@ lookupFlameRec = do
     kdisjData  <- tcLookupDataCon <=< (lookupOrig prinMod) $ (mkDataOcc "KDisj")
     kconfData  <- tcLookupDataCon <=< (lookupOrig prinMod) $ (mkDataOcc "KConf")
     kintegData <- tcLookupDataCon <=< (lookupOrig prinMod) $ (mkDataOcc "KInteg")
+    kavailData <- tcLookupDataCon <=< (lookupOrig prinMod) $ (mkDataOcc "KAvail")
     kvoiceData <- tcLookupDataCon <=< (lookupOrig prinMod) $ (mkDataOcc "KVoice")
     keyeData   <- tcLookupDataCon <=< (lookupOrig prinMod) $ (mkDataOcc "KEye")
     (level,_)    <- unsafeTcPluginTcM $ runTcS getTcLevel
@@ -102,12 +109,15 @@ lookupFlameRec = do
     ,  kdisj      = promoteDataCon kdisjData
     ,  kconf      = promoteDataCon kconfData
     ,  kinteg     = promoteDataCon kintegData
+    ,  kavail     = promoteDataCon kavailData
     ,  kvoice     = promoteDataCon kvoiceData
     ,  keye       = promoteDataCon keyeData
     ,  confBounds   = M.empty
     ,  integBounds  = M.empty
+    ,  availBounds  = M.empty
     ,  confClosure  = []
     ,  integClosure = []
+    ,  availClosure = []
     ,  tclevel      = level
     }
   where
@@ -160,14 +170,15 @@ solvePrins :: FlameRec
 solvePrins flrec givens afcts =
       -- vars are only substituted in actsfor given a set of bounds.
       -- BUT: what about structural superiors?
-    let (conf_givens_flat, integ_givens_flat) = flattenDelegations (map snd givens)
+    let (conf_givens_flat, integ_givens_flat, avail_givens_flat) = flattenDelegations (map snd givens)
         conf_closure =  computeDelClosure conf_givens_flat
         integ_closure = computeDelClosure integ_givens_flat
+        avail_closure = computeDelClosure avail_givens_flat
     in -- pprTrace "confclosure" (ppr conf_closure) $ pprTrace "integclosure" (ppr integ_closure) $
     do 
      tcPluginTrace "solvePrins" (ppr afcts)
-     solve flrec{confClosure = conf_closure, integClosure = integ_closure,
-                 confBounds = initVarMap, integBounds = initVarMap}
+     solve flrec{confClosure = conf_closure, integClosure = integ_closure, availClosure = avail_closure,
+                 confBounds = initVarMap, integBounds = initVarMap, availBounds = initVarMap}
            indexedAFs
   where
     allVars = concat [nonDetEltsUniqSet $ fvNorm p `unionUniqSets` fvNorm q | (ct, (p, q)) <- afcts]
@@ -179,15 +190,19 @@ solvePrins flrec givens afcts =
     indexedAFs = map (\(i, (ct, af)) -> (i, af)) $ indexedAFCTs
     lookupCT i = fst $ afcts !! i
 
-    confAFToVarDeps = fromList $ map (\(i, (ct, af@(N p _, N q _))) -> ((i, af), touchableFVs q)) $ indexedAFCTs 
+    confAFToVarDeps = fromList $ map (\(i, (ct, af@(N p _ _, N q _ _))) -> ((i, af), touchableFVs q)) $ indexedAFCTs 
     confVarToAFDeps = foldl (\deps (iaf, vars) -> 
                               unionWith (S.union) (fromList [(v, S.singleton iaf) | v <- vars]) deps)
                             M.empty $ toList confAFToVarDeps
 
-    integAFToVarDeps = fromList $ map (\(i, (ct, af@(N _ p, N _ q))) -> ((i, af), touchableFVs q)) $ indexedAFCTs 
+    integAFToVarDeps = fromList $ map (\(i, (ct, af@(N _ p _, N _ q _))) -> ((i, af), touchableFVs q)) $ indexedAFCTs 
     integVarToAFDeps = foldl (\deps (iaf, vars) -> 
                               unionWith (S.union) (fromList [(v, S.singleton iaf) | v <- vars]) deps)
                              M.empty $ toList integAFToVarDeps
+    availAFToVarDeps = fromList $ map (\(i, (ct, af@(N _ _ p, N _ _ q))) -> ((i, af), touchableFVs q)) $ indexedAFCTs 
+    availVarToAFDeps = foldl (\deps (iaf, vars) -> 
+                              unionWith (S.union) (fromList [(v, S.singleton iaf) | v <- vars]) deps)
+                             M.empty $ toList availAFToVarDeps
 
     touchableFVs p = [ v | v <- nonDetEltsUniqSet $ fvJNorm p, isTouchableMetaTyVar (tclevel flrec) v ]
 
@@ -196,61 +211,65 @@ solvePrins flrec givens afcts =
             -> TcPluginM SimplifyResult
     solve flrec iafs = do
       -- solve on uninstantiated vars. return updated bounds
-      let sr = ( search flrec True [] iafs []
-               , search flrec False [] iafs [])
+      let sr = ( search flrec True False [] iafs []
+               , search flrec False True [] iafs []
+               , search flrec False False [] iafs [])
+               -- one more for avail
       tcPluginTrace "search result" (ppr sr)
       case sr of
-        (Lose af, _) -> -- pprTrace "impossible: " (ppr af) $
+        (Lose af, _, _) -> -- pprTrace "impossible: " (ppr af) $
           return (Impossible af)
-        (_, Lose af) -> -- pprTrace "impossible: " (ppr af) $
+        (_, Lose af, _) -> -- pprTrace "impossible: " (ppr af) $
           return (Impossible af)
-        (cnf, intg) -> do
+        (cnf, intg, avail) -> do
           let cnf' = resultBounds cnf
               intg' = resultBounds intg
-              new_flrec = updateBounds (updateBounds flrec True cnf') False intg'
+              avail' = resultBounds intg
+              new_flrec = updateBounds (updateBounds (updateBounds flrec True False cnf') False True intg') False False avail'
               solved_cts = map (lookupCT . fst) iafs
           preds <- boundsToPredTypes new_flrec 
           (ev, wanted) <- evMagic new_flrec solved_cts preds
           {- pprTrace "solved bounds: " (ppr cnf' <+> ppr intg') $-}
           return $ Simplified (ev, wanted)
 
-    wakeup isConf solved chg = let varToDeps = if isConf then confVarToAFDeps else integVarToAFDeps
-                                   eqns = foldl (\deps v ->
+    wakeup isConf isInteg solved chg = let varToDeps = if isConf then confVarToAFDeps else if isInteg then integVarToAFDeps else availVarToAFDeps
+                                           eqns = foldl (\deps v ->
                                                    (findWithDefault S.empty v varToDeps) `S.union` deps)
                                                 S.empty
                                                 chg
-                               in partition (\eq -> (S.notMember eq eqns)) solved
+                                       in partition (\eq -> (S.notMember eq eqns)) solved
 
     search :: FlameRec
+           -> Bool
            -> Bool
            -> [(Int, (CoreNorm, CoreNorm))]
            -> [(Int, (CoreNorm, CoreNorm))]
            -> [(TyVar, CoreJNorm)]
            -> SolverResult
-    search flrec isConf solved [] changes = case changes of 
+    search flrec isConf isInteg solved [] changes = case changes of 
                                               [] -> Win
                                               _ -> ChangeBounds changes
-    search flrec isConf solved (af@(i,(u@(N cp ip), v@(N cq iq))):iafs) changes =
+    search flrec isConf isInteg solved (af@(i,(u@(N cp ip ap), v@(N cq iq aq))):iafs) changes =
       -- solve on uninstantiated vars. return updated bounds
-      let sr = refineBoundsIfNeeded flrec isConf solved (af:iafs)
+      let sr = refineBoundsIfNeeded flrec isConf isInteg solved (af:iafs)
       in case sr of
-         Win  -> search flrec isConf (af:solved) iafs changes
+         Win  -> search flrec isConf isInteg (af:solved) iafs changes
          Lose af' -> Lose af'
          ChangeBounds bnds -> 
            -- update bounds and re-solve: this ensures all members of solved are only added via 'Win'
-           let new_flrec = updateBounds flrec isConf bnds
+           let new_flrec = updateBounds flrec isConf isInteg bnds
                vchgd = map fst bnds
-               (solved', to_awake) = wakeup isConf solved vchgd
-           in search new_flrec isConf solved' (af:(to_awake ++ iafs)) (bnds ++ changes)
+               (solved', to_awake) = wakeup isConf isInteg solved vchgd
+           in search new_flrec isConf isInteg solved' (af:(to_awake ++ iafs)) (bnds ++ changes)
 
-    refineBoundsIfNeeded flrec isConf solved (af@(i,(u@(N cp ip), v@(N cq iq))):iafs) =
-      let p      = if isConf then cp else ip
-          q      = if isConf then cq else iq
-          bounds = getBounds flrec isConf
-          p' = substJNorm (tclevel flrec) bounds isConf p
-          q' = substJNorm (tclevel flrec) bounds isConf q
+    refineBoundsIfNeeded flrec isConf isInteg solved (af@(i,(u@(N cp ip ap), v@(N cq iq aq))):iafs) =
+      let p      = if isConf then cp else ip --more cases for avail
+          q      = if isConf then cq else iq  --more cases for avail
+          bounds = getBounds flrec isConf isInteg
+          p' = substJNorm (tclevel flrec) bounds isConf isInteg p
+          q' = substJNorm (tclevel flrec) bounds isConf isInteg q
       -- XXX: l bounded with a \/ b doesn't act for a \/ b
-      in case actsForJ flrec isConf p' q' of
+      in case actsForJ flrec isConf isInteg p' q' of
         Just pf -> Win
         Nothing -> 
           case touchableFVs p of
@@ -263,8 +282,8 @@ solvePrins flrec givens afcts =
                           (v:vs') -> case joinWith q (findWithDefault jbot v bounds) of
                                       Just bnd ->
                                         -- so far so good. recurse with this bound set.
-                                        let new_flrec = updateBounds flrec isConf [(v, bnd)]
-                                        in case search new_flrec isConf solved (af:iafs) [] of
+                                        let new_flrec = updateBounds flrec isConf isInteg [(v, bnd)]
+                                        in case search new_flrec isConf isInteg solved (af:iafs) [] of
                                              -- couldn't solve, try next vars
                                              Lose af -> tryvar vs' 
                                              -- solved with this change, return it
@@ -331,7 +350,7 @@ boundsToPredTypes flrec = do
                   (S.toList allVars)
    return $ concat ps
   where
-    allVars = (keysSet $ confBounds flrec) `S.union` (keysSet $ integBounds flrec) 
+    allVars = (keysSet (confBounds flrec)) `S.union` (keysSet (integBounds flrec)) 
 
 evMagic :: FlameRec -> [Ct] -> [PredType] -> TcPluginM ([(EvTerm, Ct)], [Ct])
 evMagic flrec cts preds = 
@@ -352,7 +371,7 @@ evMagic flrec cts preds =
        let newWanted = zipWith (unifyItemToCt (ctLoc ct)) preds holes
            holeEvs   = map mkHoleCo holes
            kprinReflCo = mkNomReflCo $ TyConApp (kprin flrec) []
-           kprinCoBndr = (,kprinReflCo) <$> (newFlexiTyVar $  TyConApp (kprin flrec) [])
+           kprinCoBndr = (,kprinReflCo) <$> (newFlexiTyVar (TyConApp (kprin flrec) []))
        evs <- mapM (\(af', ct') -> case af' of
                 TyConApp tc [p,q] | tc == (actsfor flrec) -> do
                   let ctEv = mkUnivCo (PluginProv "flame") Representational (mkHEqPred p q) af'

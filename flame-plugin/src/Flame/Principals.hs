@@ -9,7 +9,8 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DeriveDataTypeable #-}
-
+{-HLint ignore "Eta reduce" -}
+{-HLint ignore "Unused LANGUAGE pragma" -}
 
 module Flame.Principals
        ( KPrin (..)
