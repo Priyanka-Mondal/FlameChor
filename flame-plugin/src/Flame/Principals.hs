@@ -51,9 +51,9 @@ data KPrin =
   | KDisj  KPrin KPrin
   | KConf  KPrin
   | KInteg KPrin
+  | KAvail KPrin
   | KVoice KPrin
   | KEye   KPrin
-  | KAvail KPrin
 
 {-| 
 Singleton GADT for KPrin. This GADT associates a KPrin (which is an
@@ -72,7 +72,7 @@ data SPrin :: KPrin -> * where
   SInteg :: !(SPrin p) -> SPrin (KInteg p)
   SVoice :: !(SPrin p) -> SPrin (KVoice p)
   SEye   :: !(SPrin p) -> SPrin (KEye   p)
-  SAvail  :: !(SPrin p) -> SPrin (KConf p)
+  SAvail  :: !(SPrin p) -> SPrin (KAvail p)
 
 deriving instance Show (SPrin p)
 deriving instance Eq (SPrin p)
@@ -84,10 +84,12 @@ type (^->) p  = KConf p
 type I p      = KInteg p
 type (^←) p  = KInteg p
 type (^<-) p  = KInteg p
+type A p      = KAvail p
+type (^|^) p  = KAvail p
 type Voice p  = KVoice p
 type Eye p    = KEye p
 type N s      = KName s
-type A p      = KConf p
+
 
 type (/\) p q = KConj p q
 type p ∧ q  = KConj p q

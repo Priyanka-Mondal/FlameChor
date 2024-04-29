@@ -2,6 +2,7 @@
 --{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE PostfixOperators #-}
 {-HLint ignore "Use mapM" -}
+{-HLint ignore "Redundant bracket" -}
 
 module Flame.Runtime.Principals
        ( Prin(..)
@@ -74,7 +75,7 @@ actsFor delegations (p,q)
           confPf <- confActsFor (conf p', conf q')
           integPf <- integActsFor (integ p', integ q')
           availPf <- availActsFor (avail p', avail q')
-          Just $ AFConj [confPf, integPf]
+          Just $ AFConj [confPf, integPf, availPf]
   where
     top :: Norm
     top = N (J [M [T]]) (J [M [T]]) (J [M [T]])
@@ -84,18 +85,19 @@ actsFor delegations (p,q)
     (confClosure, integClosure, availClosure) = computeDelClosures delegations
 
     confActsFor :: (JNorm, JNorm) -> Maybe ActsForProof
-    confActsFor = actsForJ True confClosure 
+    confActsFor = actsForJ True False confClosure 
     integActsFor :: (JNorm, JNorm) -> Maybe ActsForProof
-    integActsFor = actsForJ False integClosure
+    integActsFor = actsForJ False True integClosure
     availActsFor :: (JNorm, JNorm) -> Maybe ActsForProof
-    availActsFor = actsForJ False availClosure
+    availActsFor = actsForJ False False availClosure
 
 
-actsForJ :: Bool ->
+actsForJ :: Bool -> 
+            Bool ->
             DelClosure ->
             (JNorm, JNorm) ->
             Maybe ActsForProof
-actsForJ isConf delClosure (p,q) 
+actsForJ isConf isInteg delClosure (p,q) 
   | p == top  = Just AFTop
   | q == bot  = Just AFBot
   | p == q    = Just AFRefl
@@ -113,7 +115,7 @@ actsForJ isConf delClosure (p,q)
     conjProofs :: Maybe [ActsForProof]
     conjProofs = sequence $ map (\qm ->
                                   case mapMaybe (\pm ->
-                                                  actsForM isConf delClosure (pm,qm))
+                                                  actsForM isConf isInteg delClosure (pm,qm))
                                                 pms
                                   of
                                     (pf:pfs) ->
@@ -124,10 +126,11 @@ actsForJ isConf delClosure (p,q)
                                 qms
 
 actsForM :: Bool ->
+            Bool -> 
             DelClosure ->
             (MNorm, MNorm) ->
             Maybe ActsForProof
-actsForM isConf delClosure (p,q) 
+actsForM isConf isInteg delClosure (p,q) 
   | p == top  = Just AFTop
   | q == bot  = Just AFBot
   | p == q    = Just AFRefl
@@ -144,7 +147,7 @@ actsForM isConf delClosure (p,q)
     disjProofs :: Maybe [ActsForProof]
     disjProofs = sequence $ map (\pb ->
                                   case mapMaybe (\qb ->
-                                                  actsForB isConf delClosure (pb,qb))
+                                                  actsForB isConf isInteg delClosure (pb,qb))
                                                 qbs
                                   of
                                     (pf:pfs) -> Just pf
@@ -155,10 +158,11 @@ actsForM isConf delClosure (p,q)
 -- IDEA for transitivity.  If all given dels are expressed "primitively",
 -- then transitivity can be exploited as simple reachability via given dels.
 actsForB :: Bool ->
+            Bool -> 
             DelClosure ->
             (Base, Base) ->
             Maybe ActsForProof
-actsForB isConf delClosure (p,q) 
+actsForB isConf isInteg delClosure (p,q) 
   | p == top = Just AFTop
   | q == bot = Just AFBot
   | p == q  = Just AFRefl
@@ -166,8 +170,10 @@ actsForB isConf delClosure (p,q)
     case find (== J [M [p]]) (superiors $ J [M [q]]) of
       Just del -> if isConf then
                      Just $ AFDel (Conf (reifyBase p), Conf (reifyBase q))
-                  else 
+                  else if isInteg then 
                      Just $ AFDel (Integ (reifyBase p), Integ (reifyBase q))
+                  else 
+                     Just $ AFDel (Avail (reifyBase p), Avail (reifyBase q))
       _ -> Nothing
   where
     top :: Base
@@ -214,9 +220,9 @@ normPrin :: Prin -> Norm
 normPrin Top        = N (J [M [T]]) (J [M [T]]) (J [M [T]]) 
 normPrin Bot        = N (J [M [B]]) (J [M [B]]) (J [M [B]])
 normPrin (Name s)   = N (J [M [P s]]) (J [M [P s]]) (J [M [P s]])
-normPrin (Conf p)   = N (jnormPrin True p) (J [M [B]]) (J [M [B]]) 
-normPrin (Integ p)  = N (J [M [B]]) (jnormPrin False p) (J [M [B]])
-normPrin (Avail p)  = N (J [M [B]]) (J [M [B]]) (jnormPrin False p)
+normPrin (Conf p)   = N (jnormPrin True False p) (J [M [B]]) (J [M [B]]) 
+normPrin (Integ p)  = N (J [M [B]]) (jnormPrin False True p) (J [M [B]])
+normPrin (Avail p)  = N (J [M [B]]) (J [M [B]]) (jnormPrin False False p)
 normPrin (Conj p q) = mergeNormJoin (normPrin p) (normPrin q)
 normPrin (Disj p q) = mergeNormMeet (normPrin p) (normPrin q)
 
@@ -339,20 +345,20 @@ mergeNormMeet (N c1 i1 a1) (N c2 i2 a2) = N (mergeJNormMeet c1 c2) (mergeJNormMe
 
 -- | Convert a 'Prin' to a 'JNorm' term
 -- isConf indicates whether we are normalizing the conf component
-jnormPrin :: Bool -> Prin -> JNorm
-jnormPrin isConf Top = J [M [T]]
-jnormPrin isConf Bot = J [M [B]]
-jnormPrin isConf (Name s) = J [M [P s]]
-jnormPrin isConf (Conf p) = 
-  if isConf then jnormPrin isConf p else J [M [B]]
-jnormPrin isConf (Integ p) = 
-  if isConf then J [M [B]] else jnormPrin isConf p 
-jnormPrin isConf (Avail p) = 
-  if isConf then J [M [B]] else jnormPrin isConf p --- for avail some cases missing PM ?? 
-jnormPrin isConf (Conj p q) =
-  mergeJNormJoin (jnormPrin isConf p) (jnormPrin isConf q)
-jnormPrin isConf (Disj p q) =
-  mergeJNormMeet (jnormPrin isConf p) (jnormPrin isConf q)
+jnormPrin :: Bool -> Bool -> Prin -> JNorm
+jnormPrin isConf isInteg Top = J [M [T]]
+jnormPrin isConf isInteg Bot = J [M [B]]
+jnormPrin isConf isInteg (Name s) = J [M [P s]]
+jnormPrin isConf isInteg (Conf p) = 
+  if isConf then jnormPrin isConf isInteg p else J [M [B]]
+jnormPrin isConf isInteg (Integ p) = 
+  if isInteg then jnormPrin isConf isInteg p else J [M [B]]
+jnormPrin isConf isInteg (Avail p) = 
+  if (not isInteg) && (not isConf) then jnormPrin isConf isInteg p else J [M [B]]
+jnormPrin isConf isInteg (Conj p q) =
+  mergeJNormJoin (jnormPrin isConf isInteg p) (jnormPrin isConf isInteg q)
+jnormPrin isConf isInteg (Disj p q) =
+  mergeJNormMeet (jnormPrin isConf isInteg p) (jnormPrin isConf isInteg q)
 
 --------------------- Delegation closures ------------------------------------
 {-

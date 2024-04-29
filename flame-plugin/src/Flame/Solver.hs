@@ -224,7 +224,7 @@ solvePrins flrec givens afcts =
         (cnf, intg, avail) -> do
           let cnf' = resultBounds cnf
               intg' = resultBounds intg
-              avail' = resultBounds intg
+              avail' = resultBounds avail
               new_flrec = updateBounds (updateBounds (updateBounds flrec True False cnf') False True intg') False False avail'
               solved_cts = map (lookupCT . fst) iafs
           preds <- boundsToPredTypes new_flrec 
@@ -263,8 +263,8 @@ solvePrins flrec givens afcts =
            in search new_flrec isConf isInteg solved' (af:(to_awake ++ iafs)) (bnds ++ changes)
 
     refineBoundsIfNeeded flrec isConf isInteg solved (af@(i,(u@(N cp ip ap), v@(N cq iq aq))):iafs) =
-      let p      = if isConf then cp else ip --more cases for avail
-          q      = if isConf then cq else iq  --more cases for avail
+      let p      = if isConf then cp else if isInteg then ip else ap --more cases for avail
+          q      = if isConf then cq else if isInteg then iq else ap  --more cases for avail
           bounds = getBounds flrec isConf isInteg
           p' = substJNorm (tclevel flrec) bounds isConf isInteg p
           q' = substJNorm (tclevel flrec) bounds isConf isInteg q

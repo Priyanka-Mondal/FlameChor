@@ -61,8 +61,8 @@ maybeToEither e Nothing = Left e
 maybeToEither _ (Just a) = Right a
 
 
-type A = N "A"
-locA :: SPrin A
+type E = N "A"
+locA :: SPrin E
 locA = SName (Proxy :: Proxy "A")
 
 type B = N "B"
@@ -78,7 +78,7 @@ client :: SPrin Client
 client = SName (Proxy :: Proxy "client")
 
 
-type ABC = (((A \/ B) \/ D) \/ Client )
+type ABC = (((E \/ B) \/ D) \/ Client )
    --deriving (Show)
 
 abc :: SPrin ABC

@@ -41,9 +41,9 @@ library
                     MyHasChor.Choreography.Network.Local,
                     MyHasChor.Choreography.NetworkAsync,
                     MyHasChor.Choreography.NetworkAsync.Http,
-                    MyHasChor.Control.Monad.Freer, 
-                    MyHasChor.Choreography.Labelled
-                    MyHasChor.Choreography.LabelledAsync
+                    MyHasChor.Control.Monad.Freer
+                    --MyHasChor.Choreography.Labelled
+                    --MyHasChor.Choreography.LabelledAsync
                     --Control.Monad.Freer
 
   -- other-modules:       

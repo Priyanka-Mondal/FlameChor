@@ -137,9 +137,11 @@ jnormPrin flrec isConf isInteg (TyConApp tc [])
 jnormPrin flrec isConf isInteg (TyConApp tc [x])
   | tc == (kname flrec) = return $ J [M [P x]]
   | tc == (kconf flrec) =
-    if isConf then jnormPrin' x else return $ J [M [B]] -- more cases for avail
+    if isConf then jnormPrin' x else return $ J [M [B]] 
   | tc == (kinteg flrec) = 
-    if isConf then return $ J [M [B]] else jnormPrin' x -- more cases for avail
+    if isInteg then jnormPrin' x else return $ J [M [B]]
+  | tc == (kavail flrec) = 
+    if (not isConf) && (not isInteg) then jnormPrin' x else return $ J [M [B]]
   | tc == (kvoice flrec) =
     if isConf then return $ J [M [B]] else integ <$> voiceOf <$> (normPrin flrec x)
   | tc == (keye flrec) =
@@ -164,6 +166,7 @@ normPrin flrec (TyConApp tc [x])
   | tc == (kname flrec)  = return $ N (J [M [P x]]) (J [M [P x]]) (J [M [P x]])
   | tc == (kconf flrec)  = N <$> (jnormPrin flrec True False x) <*> (Just (J [M [B]])) <*> (Just (J [M [B]]))
   | tc == (kinteg flrec) = N (J [M [B]]) <$> (jnormPrin flrec False True x) <*> (Just (J [M [B]]))
+  | tc == (kavail flrec) = N (J [M [B]]) <$> (Just (J [M [B]])) <*>  (jnormPrin flrec False True x)
   | tc == (kvoice flrec) = voiceOf <$> normPrin flrec x
   | tc == (keye flrec)   = eyeOf <$> normPrin flrec x
 normPrin flrec (TyConApp tc [x,y])
@@ -374,6 +377,7 @@ outputKPrin flrec (TyConApp tc [x])
   | tc == (kname flrec)  = showGhc x
   | tc == (kconf flrec)  = (outputKPrin flrec x  ++ " →")
   | tc == (kinteg flrec) = (outputKPrin flrec x ++ " ←")
+  | tc == (kavail flrec) = (outputKPrin flrec x ++ "|^")
   | tc == (kvoice flrec) = ("∇(" ++ outputKPrin flrec x  ++ ")")
   | tc == (keye flrec)   = ("Δ(" ++ outputKPrin flrec x  ++ ")")
 outputKPrin flrec (TyConApp tc [x,y])
