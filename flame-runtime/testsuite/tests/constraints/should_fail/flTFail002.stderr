@@ -1,0 +1,14 @@
+
+flTFail002.hs:14:20:
+     Could not deduce: (C ('KConf p) ≽ C ('KConf ('KConj p q)),
+                         I ('KConf ('KConj p q)) ≽ I ('KConf p))
+        arising from a use of ‘assertFlowsTo’
+     In the expression: assertFlowsTo ((p *∧ q) *→) (p *→)
+      In an equation for ‘flTConfConjL’:
+          flTConfConjL p q = assertFlowsTo ((p *∧ q) *→) (p *→)
+     Relevant bindings include
+        q :: SPrin q (bound at flTFail002.hs:14:16)
+        p :: SPrin p (bound at flTFail002.hs:14:14)
+        flTConfConjL :: SPrin p -> SPrin q -> ()
+          (bound at flTFail002.hs:14:1)
+

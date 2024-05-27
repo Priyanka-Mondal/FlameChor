@@ -1,0 +1,34 @@
+
+nmFail007.hs:20:43:
+     Could not deduce: (C (p ∧ I q) ≽ C (C p ∧ I q),
+                         I (C p ∧ I q) ≽ I (p ∧ I q),
+                         C (I p) ≽ C (I p),
+                         I (I p) ≽ I (I p),
+                         C (Δ q) ≽ C (C p ∧ I q),
+                         I (C p ∧ I q) ≽ I (Δ q))
+        arising from a use of ‘reprotect_b’
+      from the context: BFLA c m e n
+        bound by the type signature for:
+                   nm_seven :: BFLA c m e n =>
+                               SPrin p
+                               -> SPrin q
+                               -> c m e n (Δ q) (I p) (C p ∧ I q) a
+                               -> c m e n (Δ q) (I p) (p ∧ I q) a
+        at nmFail007.hs:(15,1)-(19,51)
+      or from: I q ≽ I p
+        bound by a type expected by the context:
+                   (I q ≽ I p) => c m e n (Δ q) (I p) (p ∧ I q) a
+        at nmFail007.hs:20:18-56
+     In the second argument of ‘iassume’, namely ‘(reprotect_b v)’
+      In the expression: iassume ((q *←) ≽ (p *←)) (reprotect_b v)
+      In an equation for ‘nm_seven’:
+          nm_seven p q v = iassume ((q *←) ≽ (p *←)) (reprotect_b v)
+     Relevant bindings include
+        v :: c m e n (Δ q) (I p) (C p ∧ I q) a (bound at nmFail007.hs:20:14)
+        q :: SPrin q (bound at nmFail007.hs:20:12)
+        p :: SPrin p (bound at nmFail007.hs:20:10)
+        nm_seven :: SPrin p
+                    -> SPrin q
+                    -> c m e n (Δ q) (I p) (C p ∧ I q) a
+                    -> c m e n (Δ q) (I p) (p ∧ I q) a
+          (bound at nmFail007.hs:20:1)

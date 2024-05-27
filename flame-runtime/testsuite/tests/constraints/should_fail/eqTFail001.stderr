@@ -1,0 +1,10 @@
+
+eqTFail001.hs:14:19:
+     Could not deduce: (p ≽ q, q ≽ p) arising from a use of ‘assertEq’
+     In the expression: assertEq p q
+      In an equation for ‘neg_eqTConf’: neg_eqTConf p q = assertEq p q
+     Relevant bindings include
+        q :: SPrin q (bound at eqTFail001.hs:14:15)
+        p :: SPrin p (bound at eqTFail001.hs:14:13)
+        neg_eqTConf :: SPrin p -> SPrin q -> ()
+          (bound at eqTFail001.hs:14:1)
