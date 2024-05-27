@@ -1,0 +1,13 @@
+1. Complete context normalization:
+	- for each conjunction on the LHS, add a pseudo-node to the graph that is
+		reachable from each conjunct and from which the intersection of the
+		superiors of each conjunct are reachable.
+	- for each disjunction on the RHS, add a pseudo-node to the graph that is
+		reaches each disjunction and is reachable from the intersection of 
+		the inferiors of each disjunct.
+	- fixed points?
+2. implement (local) dynamic principal comparison algorithm.
+
+3. implement FLA wrappers for caveats (Prin pc, Prin l, caveat).
+	- satisfy_exact(Bound l, Lbl l caveat)
+	- satisfy_general((Bound pc, Bound l, caveat) -> IFC pc l Bool)

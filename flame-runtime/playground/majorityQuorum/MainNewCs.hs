@@ -287,12 +287,12 @@ majorityQuorum = do
   (bs, buyer2, bs, fromBuyer2) `sLocally` \_-> relabel' bs buyerGetLine2
   (bs, seller, bs, fromSeller) `sLocally` \_-> safePutStrLn @BS $ label "compare/select done at seller"
 
+  -- failOr a class 
+  -- support for avaialbility 
   -- try nested select compare -- working with IO r.n. what about Labeled monad working but need to use `use`?
-  -- support for Reads/Eq for Sealed values 
-  -- support for availability 
-
-
-
+  -- support for Reads/Eq for Sealed values  -- sComparable
+  -- run tests from the testsuite, Assert.hs, Makefile 
+  -- add and modify tests accordingly
 
 quorumMain :: HttpConfig -> IO ()
 quorumMain cfg = do

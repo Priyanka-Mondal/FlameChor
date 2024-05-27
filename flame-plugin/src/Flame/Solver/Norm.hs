@@ -166,7 +166,7 @@ normPrin flrec (TyConApp tc [x])
   | tc == (kname flrec)  = return $ N (J [M [P x]]) (J [M [P x]]) (J [M [P x]])
   | tc == (kconf flrec)  = N <$> (jnormPrin flrec True False x) <*> (Just (J [M [B]])) <*> (Just (J [M [B]]))
   | tc == (kinteg flrec) = N (J [M [B]]) <$> (jnormPrin flrec False True x) <*> (Just (J [M [B]]))
-  | tc == (kavail flrec) = N (J [M [B]]) <$> (Just (J [M [B]])) <*>  (jnormPrin flrec False True x)
+  | tc == (kavail flrec) = N (J [M [B]]) (J [M [B]]) <$>  (jnormPrin flrec False True x)
   | tc == (kvoice flrec) = voiceOf <$> normPrin flrec x
   | tc == (keye flrec)   = eyeOf <$> normPrin flrec x
 normPrin flrec (TyConApp tc [x,y])

@@ -1,0 +1,11 @@
+resolver: lts-21.19
+
+packages:
+- flame-plugin
+- flame-runtime
+
+extra-deps:
+- async-2.2.5
+- ghc-tcplugin-api-0.11.0.0@sha256:3f753db5becff0c7336a1f9a413f2f62ba358a36cd853df133fb9e82fb089628
+- git: git@github.com:gshen42/HasChor.git
+  commit: 'be57bcbd7cf4783310785c7703d30cf3788c0c4b'

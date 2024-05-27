@@ -1,0 +1,8 @@
+executables:
+  bookseller:
+    main:                Main.hs
+    source-dirs:         flame-runtime/playground/bookseller/app
+    dependencies:
+    - flame-plugin
+    - flame-runtime
+

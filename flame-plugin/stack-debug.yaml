@@ -1,0 +1,10 @@
+resolver: lts-21.19
+
+packages:
+- .
+
+extra-deps:
+- ghc-tcplugin-api-0.11.0.0@sha256:3f753db5becff0c7336a1f9a413f2f62ba358a36cd853df133fb9e82fb089628
+
+# for freer-simple's dep on older TH
+# allow-newer: true

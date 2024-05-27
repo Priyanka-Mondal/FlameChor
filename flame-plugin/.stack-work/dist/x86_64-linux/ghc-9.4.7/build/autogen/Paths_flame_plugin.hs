@@ -42,12 +42,12 @@ getBinDir, getLibDir, getDynLibDir, getDataDir, getLibexecDir, getSysconfDir :: 
 
 
 bindir, libdir, dynlibdir, datadir, libexecdir, sysconfdir :: FilePath
-bindir     = "/home/priyanka/Flame/.stack-work/install/x86_64-linux/18f66e4077c12dac9dbc69fc83a04e69423e035e61d91b5d4c2edfe282df2815/9.4.7/bin"
-libdir     = "/home/priyanka/Flame/.stack-work/install/x86_64-linux/18f66e4077c12dac9dbc69fc83a04e69423e035e61d91b5d4c2edfe282df2815/9.4.7/lib/x86_64-linux-ghc-9.4.7/flame-plugin-0.1.0.2-6htUcAT7XW35tea1wbYLQq"
-dynlibdir  = "/home/priyanka/Flame/.stack-work/install/x86_64-linux/18f66e4077c12dac9dbc69fc83a04e69423e035e61d91b5d4c2edfe282df2815/9.4.7/lib/x86_64-linux-ghc-9.4.7"
-datadir    = "/home/priyanka/Flame/.stack-work/install/x86_64-linux/18f66e4077c12dac9dbc69fc83a04e69423e035e61d91b5d4c2edfe282df2815/9.4.7/share/x86_64-linux-ghc-9.4.7/flame-plugin-0.1.0.2"
-libexecdir = "/home/priyanka/Flame/.stack-work/install/x86_64-linux/18f66e4077c12dac9dbc69fc83a04e69423e035e61d91b5d4c2edfe282df2815/9.4.7/libexec/x86_64-linux-ghc-9.4.7/flame-plugin-0.1.0.2"
-sysconfdir = "/home/priyanka/Flame/.stack-work/install/x86_64-linux/18f66e4077c12dac9dbc69fc83a04e69423e035e61d91b5d4c2edfe282df2815/9.4.7/etc"
+bindir     = "/home/manu/FlameChor/.stack-work/install/x86_64-linux/add7b492a866e4085b3574f6fc0eee9f0eebcffa83d69ae93c7127976c3b7333/9.4.7/bin"
+libdir     = "/home/manu/FlameChor/.stack-work/install/x86_64-linux/add7b492a866e4085b3574f6fc0eee9f0eebcffa83d69ae93c7127976c3b7333/9.4.7/lib/x86_64-linux-ghc-9.4.7/flame-plugin-0.1.0.2-1tiqLzqrJn17ZmJMSyEeBw"
+dynlibdir  = "/home/manu/FlameChor/.stack-work/install/x86_64-linux/add7b492a866e4085b3574f6fc0eee9f0eebcffa83d69ae93c7127976c3b7333/9.4.7/lib/x86_64-linux-ghc-9.4.7"
+datadir    = "/home/manu/FlameChor/.stack-work/install/x86_64-linux/add7b492a866e4085b3574f6fc0eee9f0eebcffa83d69ae93c7127976c3b7333/9.4.7/share/x86_64-linux-ghc-9.4.7/flame-plugin-0.1.0.2"
+libexecdir = "/home/manu/FlameChor/.stack-work/install/x86_64-linux/add7b492a866e4085b3574f6fc0eee9f0eebcffa83d69ae93c7127976c3b7333/9.4.7/libexec/x86_64-linux-ghc-9.4.7/flame-plugin-0.1.0.2"
+sysconfdir = "/home/manu/FlameChor/.stack-work/install/x86_64-linux/add7b492a866e4085b3574f6fc0eee9f0eebcffa83d69ae93c7127976c3b7333/9.4.7/etc"
 
 getBinDir     = catchIO (getEnv "flame_plugin_bindir")     (\_ -> return bindir)
 getLibDir     = catchIO (getEnv "flame_plugin_libdir")     (\_ -> return libdir)

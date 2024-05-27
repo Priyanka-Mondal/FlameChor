@@ -10,25 +10,25 @@
   (major1) == 0 && (major2) <  1 || \
   (major1) == 0 && (major2) == 1 && (minor) <= 0)
 #endif /* MIN_VERSION_flame_runtime */
-/* package HasChor-0.1.0.1 */
-#ifndef VERSION_HasChor
-#define VERSION_HasChor "0.1.0.1"
-#endif /* VERSION_HasChor */
-#ifndef MIN_VERSION_HasChor
-#define MIN_VERSION_HasChor(major1,major2,minor) (\
+/* package array-0.5.4.0 */
+#ifndef VERSION_array
+#define VERSION_array "0.5.4.0"
+#endif /* VERSION_array */
+#ifndef MIN_VERSION_array
+#define MIN_VERSION_array(major1,major2,minor) (\
   (major1) <  0 || \
-  (major1) == 0 && (major2) <  1 || \
-  (major1) == 0 && (major2) == 1 && (minor) <= 0)
-#endif /* MIN_VERSION_HasChor */
-/* package async-2.2.4 */
+  (major1) == 0 && (major2) <  5 || \
+  (major1) == 0 && (major2) == 5 && (minor) <= 4)
+#endif /* MIN_VERSION_array */
+/* package async-2.2.5 */
 #ifndef VERSION_async
-#define VERSION_async "2.2.4"
+#define VERSION_async "2.2.5"
 #endif /* VERSION_async */
 #ifndef MIN_VERSION_async
 #define MIN_VERSION_async(major1,major2,minor) (\
   (major1) <  2 || \
   (major1) == 2 && (major2) <  2 || \
-  (major1) == 2 && (major2) == 2 && (minor) <= 4)
+  (major1) == 2 && (major2) == 2 && (minor) <= 5)
 #endif /* MIN_VERSION_async */
 /* package base-4.17.2.0 */
 #ifndef VERSION_base
@@ -110,16 +110,6 @@
   (major1) == 0 && (major2) <  1 || \
   (major1) == 0 && (major2) == 1 && (minor) <= 0)
 #endif /* MIN_VERSION_flame_plugin */
-/* package freer-simple-1.2.1.2 */
-#ifndef VERSION_freer_simple
-#define VERSION_freer_simple "1.2.1.2"
-#endif /* VERSION_freer_simple */
-#ifndef MIN_VERSION_freer_simple
-#define MIN_VERSION_freer_simple(major1,major2,minor) (\
-  (major1) <  1 || \
-  (major1) == 1 && (major2) <  2 || \
-  (major1) == 1 && (major2) == 2 && (minor) <= 1)
-#endif /* MIN_VERSION_freer_simple */
 /* package ghc-9.4.7 */
 #ifndef VERSION_ghc
 #define VERSION_ghc "9.4.7"
@@ -150,16 +140,26 @@
   (major1) == 1 && (major2) <  23 || \
   (major1) == 1 && (major2) == 23 && (minor) <= 1)
 #endif /* MIN_VERSION_haskell_src_exts */
-/* package haskell-src-meta-0.8.13 */
+/* package haskell-src-meta-0.8.12 */
 #ifndef VERSION_haskell_src_meta
-#define VERSION_haskell_src_meta "0.8.13"
+#define VERSION_haskell_src_meta "0.8.12"
 #endif /* VERSION_haskell_src_meta */
 #ifndef MIN_VERSION_haskell_src_meta
 #define MIN_VERSION_haskell_src_meta(major1,major2,minor) (\
   (major1) <  0 || \
   (major1) == 0 && (major2) <  8 || \
-  (major1) == 0 && (major2) == 8 && (minor) <= 13)
+  (major1) == 0 && (major2) == 8 && (minor) <= 12)
 #endif /* MIN_VERSION_haskell_src_meta */
+/* package http-client-0.7.15 */
+#ifndef VERSION_http_client
+#define VERSION_http_client "0.7.15"
+#endif /* VERSION_http_client */
+#ifndef MIN_VERSION_http_client
+#define MIN_VERSION_http_client(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  7 || \
+  (major1) == 0 && (major2) == 7 && (minor) <= 15)
+#endif /* MIN_VERSION_http_client */
 /* package mtl-2.2.2 */
 #ifndef VERSION_mtl
 #define VERSION_mtl "2.2.2"
@@ -170,6 +170,16 @@
   (major1) == 2 && (major2) <  2 || \
   (major1) == 2 && (major2) == 2 && (minor) <= 2)
 #endif /* MIN_VERSION_mtl */
+/* package random-1.2.1.1 */
+#ifndef VERSION_random
+#define VERSION_random "1.2.1.1"
+#endif /* VERSION_random */
+#ifndef MIN_VERSION_random
+#define MIN_VERSION_random(major1,major2,minor) (\
+  (major1) <  1 || \
+  (major1) == 1 && (major2) <  2 || \
+  (major1) == 1 && (major2) == 2 && (minor) <= 1)
+#endif /* MIN_VERSION_random */
 /* package reflection-2.1.7 */
 #ifndef VERSION_reflection
 #define VERSION_reflection "2.1.7"
@@ -180,6 +190,46 @@
   (major1) == 2 && (major2) <  1 || \
   (major1) == 2 && (major2) == 1 && (minor) <= 7)
 #endif /* MIN_VERSION_reflection */
+/* package servant-0.19.1 */
+#ifndef VERSION_servant
+#define VERSION_servant "0.19.1"
+#endif /* VERSION_servant */
+#ifndef MIN_VERSION_servant
+#define MIN_VERSION_servant(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  19 || \
+  (major1) == 0 && (major2) == 19 && (minor) <= 1)
+#endif /* MIN_VERSION_servant */
+/* package servant-client-0.19 */
+#ifndef VERSION_servant_client
+#define VERSION_servant_client "0.19"
+#endif /* VERSION_servant_client */
+#ifndef MIN_VERSION_servant_client
+#define MIN_VERSION_servant_client(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  19 || \
+  (major1) == 0 && (major2) == 19 && (minor) <= 0)
+#endif /* MIN_VERSION_servant_client */
+/* package servant-server-0.19.2 */
+#ifndef VERSION_servant_server
+#define VERSION_servant_server "0.19.2"
+#endif /* VERSION_servant_server */
+#ifndef MIN_VERSION_servant_server
+#define MIN_VERSION_servant_server(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  19 || \
+  (major1) == 0 && (major2) == 19 && (minor) <= 2)
+#endif /* MIN_VERSION_servant_server */
+/* package stm-2.5.1.0 */
+#ifndef VERSION_stm
+#define VERSION_stm "2.5.1.0"
+#endif /* VERSION_stm */
+#ifndef MIN_VERSION_stm
+#define MIN_VERSION_stm(major1,major2,minor) (\
+  (major1) <  2 || \
+  (major1) == 2 && (major2) <  5 || \
+  (major1) == 2 && (major2) == 5 && (minor) <= 1)
+#endif /* MIN_VERSION_stm */
 /* package template-haskell-2.19.0.0 */
 #ifndef VERSION_template_haskell
 #define VERSION_template_haskell "2.19.0.0"
@@ -200,16 +250,46 @@
   (major1) == 2 && (major2) <  0 || \
   (major1) == 2 && (major2) == 0 && (minor) <= 2)
 #endif /* MIN_VERSION_text */
+/* package time-1.12.2 */
+#ifndef VERSION_time
+#define VERSION_time "1.12.2"
+#endif /* VERSION_time */
+#ifndef MIN_VERSION_time
+#define MIN_VERSION_time(major1,major2,minor) (\
+  (major1) <  1 || \
+  (major1) == 1 && (major2) <  12 || \
+  (major1) == 1 && (major2) == 12 && (minor) <= 2)
+#endif /* MIN_VERSION_time */
+/* package unordered-containers-0.2.19.1 */
+#ifndef VERSION_unordered_containers
+#define VERSION_unordered_containers "0.2.19.1"
+#endif /* VERSION_unordered_containers */
+#ifndef MIN_VERSION_unordered_containers
+#define MIN_VERSION_unordered_containers(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  2 || \
+  (major1) == 0 && (major2) == 2 && (minor) <= 19)
+#endif /* MIN_VERSION_unordered_containers */
+/* package warp-3.3.25 */
+#ifndef VERSION_warp
+#define VERSION_warp "3.3.25"
+#endif /* VERSION_warp */
+#ifndef MIN_VERSION_warp
+#define MIN_VERSION_warp(major1,major2,minor) (\
+  (major1) <  3 || \
+  (major1) == 3 && (major2) <  3 || \
+  (major1) == 3 && (major2) == 3 && (minor) <= 25)
+#endif /* MIN_VERSION_warp */
 
-/* tool gcc-9 */
+/* tool gcc-11 */
 #ifndef TOOL_VERSION_gcc
-#define TOOL_VERSION_gcc "9"
+#define TOOL_VERSION_gcc "11"
 #endif /* TOOL_VERSION_gcc */
 #ifndef MIN_TOOL_VERSION_gcc
 #define MIN_TOOL_VERSION_gcc(major1,major2,minor) (\
-  (major1) <  9 || \
-  (major1) == 9 && (major2) <  0 || \
-  (major1) == 9 && (major2) == 0 && (minor) <= 0)
+  (major1) <  11 || \
+  (major1) == 11 && (major2) <  0 || \
+  (major1) == 11 && (major2) == 0 && (minor) <= 0)
 #endif /* MIN_TOOL_VERSION_gcc */
 /* tool ghc-9.4.7 */
 #ifndef TOOL_VERSION_ghc
@@ -271,15 +351,15 @@
   (major1) == 0 && (major2) <  68 || \
   (major1) == 0 && (major2) == 68 && (minor) <= 8)
 #endif /* MIN_TOOL_VERSION_hsc2hs */
-/* tool pkg-config-0.29.1 */
+/* tool pkg-config-0.29.2 */
 #ifndef TOOL_VERSION_pkg_config
-#define TOOL_VERSION_pkg_config "0.29.1"
+#define TOOL_VERSION_pkg_config "0.29.2"
 #endif /* TOOL_VERSION_pkg_config */
 #ifndef MIN_TOOL_VERSION_pkg_config
 #define MIN_TOOL_VERSION_pkg_config(major1,major2,minor) (\
   (major1) <  0 || \
   (major1) == 0 && (major2) <  29 || \
-  (major1) == 0 && (major2) == 29 && (minor) <= 1)
+  (major1) == 0 && (major2) == 29 && (minor) <= 2)
 #endif /* MIN_TOOL_VERSION_pkg_config */
 /* tool runghc-9.4.7 */
 #ifndef TOOL_VERSION_runghc
@@ -291,22 +371,22 @@
   (major1) == 9 && (major2) <  4 || \
   (major1) == 9 && (major2) == 4 && (minor) <= 7)
 #endif /* MIN_TOOL_VERSION_runghc */
-/* tool strip-2.34 */
+/* tool strip-2.38 */
 #ifndef TOOL_VERSION_strip
-#define TOOL_VERSION_strip "2.34"
+#define TOOL_VERSION_strip "2.38"
 #endif /* TOOL_VERSION_strip */
 #ifndef MIN_TOOL_VERSION_strip
 #define MIN_TOOL_VERSION_strip(major1,major2,minor) (\
   (major1) <  2 || \
-  (major1) == 2 && (major2) <  34 || \
-  (major1) == 2 && (major2) == 34 && (minor) <= 0)
+  (major1) == 2 && (major2) <  38 || \
+  (major1) == 2 && (major2) == 38 && (minor) <= 0)
 #endif /* MIN_TOOL_VERSION_strip */
 
 #ifndef CURRENT_PACKAGE_KEY
-#define CURRENT_PACKAGE_KEY "flame-runtime-0.1.0.2-HI5LguuKnWzImIfC9XLSwM"
+#define CURRENT_PACKAGE_KEY "flame-runtime-0.1.0.2-85uHbfgIiWUJjDH7JHj6UK"
 #endif /* CURRENT_packageKey */
 #ifndef CURRENT_COMPONENT_ID
-#define CURRENT_COMPONENT_ID "flame-runtime-0.1.0.2-HI5LguuKnWzImIfC9XLSwM"
+#define CURRENT_COMPONENT_ID "flame-runtime-0.1.0.2-85uHbfgIiWUJjDH7JHj6UK"
 #endif /* CURRENT_COMPONENT_ID */
 #ifndef CURRENT_PACKAGE_VERSION
 #define CURRENT_PACKAGE_VERSION "0.1.0.2"

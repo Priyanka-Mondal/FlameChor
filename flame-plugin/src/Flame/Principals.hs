@@ -16,7 +16,7 @@ module Flame.Principals
        ( KPrin (..)
        , SPrin (..)
        , C, I, type (^->), type (^→), type (^<-), type (^←)
-       , A
+       , A, type (^|^)
        , N, Public, Secret, Trusted, Untrusted, PT, SU 
        , DPrin (st, dyn), Ex(..) 
        , withPrin, promote
@@ -26,9 +26,9 @@ module Flame.Principals
        , type (∇), Voice, Δ, Eye, (∇), δ 
        , (⊤), top, (⊥), bot
        , public, trusted, publicTrusted, secret, untrusted, secretUntrusted
-       , (^->), (^→), (^<-), (^←)
+       , (^->), (^→), (^<-), (^←), (^|^)
        , (/\), (∧), (\/), (∨), (⊔), (⊓)
-       , (*->), (*→), (*<-), (*←), (*/\), (*∧), (*\/), (*∨), (*⊔), (*⊓), (*∇)  
+       , (*->), (*→), (*<-), (*←), (*|^),(*/\), (*∧), (*\/), (*∨), (*⊔), (*⊓), (*∇)  
        , (<=>) -- XXX TODO: should not export to non-TCB code.
        )
 where

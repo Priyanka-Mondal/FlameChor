@@ -1,0 +1,22 @@
+/home/manu/.ghcup/ghc/9.4.7/lib/ghc-9.4.7/lib/x86_64-linux-ghc-9.4.7/rts-1.0.2/include/ghcversion.h:
+  hash: ee548d48ca5c94d7c7fab127ec07be47b01afa24d6495358aa9ff6cfc8541c81
+/home/manu/FLAME/flame/flame-plugin/.stack-work/dist/x86_64-linux/ghc-9.4.7/build/autogen/cabal_macros.h:
+  hash: 4bfda84cc76cbe01debad921b480f22c2bdd280fedc2f2bd7b83e10118330a86
+/home/manu/FLAME/flame/flame-plugin/flame-plugin.cabal:
+  hash: e201bbe3cf947a6d60bbc48de0a21013ae2496e4f832f95510b98e0113a1c201
+/home/manu/FLAME/flame/flame-plugin/src/Flame/Principals.hs:
+  hash: e08a91360585e59df9d177e22d84442eef8c4ef07d893a1e7078e179fe249892
+/home/manu/FLAME/flame/flame-plugin/src/Flame/Runtime/Principals.hs:
+  hash: cb7eef75717eeb6181bc138b05b016cceef50161bb59a74c3662385872191ed6
+/home/manu/FLAME/flame/flame-plugin/src/Flame/Solver.hs:
+  hash: 85906587f39bc42cbb90e1cf5e2943bd1120d87ec4313cfae252d58afba531e3
+/home/manu/FLAME/flame/flame-plugin/src/Flame/Solver/ActsFor.hs:
+  hash: 3ca9c35dcb8dbba379ce71d1bdaa7e05e484caa5bdb6dd1f22e121bf89ed0b71
+/home/manu/FLAME/flame/flame-plugin/src/Flame/Solver/Data.hs:
+  hash: b1f24d0b3d03d05bed4e6699d449286a67f4b8a4db22b9772eae0af96281a1cc
+/home/manu/FLAME/flame/flame-plugin/src/Flame/Solver/Norm.hs:
+  hash: 950ff7979e37b0f7cb6231d9369b5f8797fecc7d81be584c21d91fcbf04e225e
+/home/manu/FLAME/flame/flame-plugin/src/Flame/Solver/Unify.hs:
+  hash: 89c318b36692060863dea5f0d80edda06f373e8be232b720723e407544f87d7e
+/usr/include/stdc-predef.h:
+  hash: cb08cd5d4cc059a90833ac48a284d25016e8d56ded8ad4cd98d8ac59cc5053f3

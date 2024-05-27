@@ -10,7 +10,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# OPTIONS_GHC -fplugin Flame.Solver -fobject-code #-}
 --{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# HLINT ignore "[Replace {rtype = Expr, pos = SrcSpan {startLine = 132, startCol = 57, endLine = 132, endCol = 81}, subts = [("a",SrcSpan {startLine = 132, startCol = 64, endLine = 132, endCol = 74}),("b",SrcSpan {startLine = 132, startCol = 77, endLine = 132, endCol = 78})], orig = "a . b"}]" #-}
+{- HLINT ignore "[Replace {rtype = Expr, pos = SrcSpan {startLine = 132, startCol = 57, endLine = 132, endCol = 81}, subts = [("a",SrcSpan {startLine = 132, startCol = 64, endLine = 132, endCol = 74}),("b",SrcSpan {startLine = 132, startCol = 77, endLine = 132, endCol = 78})], orig = "a . b"}]" #-}
 
 
 module Main where
@@ -126,8 +126,27 @@ clientGetLine :: Labeled IO FromClient (FromClient!Int)
 clientGetLine = sGetLine fromClient
 --------------
 --------------
+-- class SComparable ((l:: KPrin) ! a) where
+--   equal :: forall l pc . (SComparable a, l ⊑ pc) => a -> a -> KPrin -> Bool
+
+-- instance SComparable ((l:: KPrin) ! a) KPrin where 
+--   equal (l ! a1) (l ! a2) pc = equal a1 a2 
+
+-- class (SComparable a, ) => SComparable pc l a where
+--   reads :: forall pc .  (SComparable a, C pc ≽ C l) =>  l!a -> l!a -> (SPrin pc) -> Bool
+   
+-- instance SComparable l Int where 
+--   equal a1 a2 pc = a1 == a2
+
+-- instance SComparable pc (l ! a) where  
+--   equal pc (Seal a1) (Seal a2) = if (C l ⊑ C pc) && (a1 == a2) then True else False 
+
+-- instance SComparable pc (l ! a) where  
+--   equal pc (Seal a1) (Seal a2) = if (C l ⊑ C pc) && (a1 == a2) then True else False 
+
 instance Show a => Show (l ! a) where
   show (Seal x) = "Seal " ++ show x
+
 instance Read a => Read (l ! a) where
   readsPrec _ s = [(Seal x, rest) | ("Seal", rest1) <- lex s, (x, rest) <- readsPrec 0 rest1]
 instance Eq a => Eq (l ! a) where
@@ -150,7 +169,6 @@ labelIn :: l!(a @ loc) -> (l!a) @ loc
 labelIn (Seal asl) = case asl of
                         Wrap as -> Wrap $ Seal as
                         Empty   -> Empty
-
 
 labelInM :: Monad m => Labeled m pc (l!(a @ loc)) -> Labeled m pc ((l!a) @ loc)
 labelInM e = labelIn <$> e
@@ -308,7 +326,7 @@ sCompare' pc a' b' = do
   a <- a'
   b <- b'
   restrict pc (\_ -> 
-      (liftIO $ forceEitherUntil 10000000 a b) >>= \case
+      (liftIO $ forceEitherUntil 10000000 a b) >>= \case -- generic lift , m' instead of IO
         Left (Left Fail) -> return (Left Fail)
         Left (Right (Seal a')) -> 
            (liftIO $ forceUntil 10000000 b) >>= \case 

@@ -1,0 +1,134 @@
+/home/manu/.ghcup/ghc/9.4.7/lib/ghc-9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSarray-0.5.4.0-ghc9.4.7.so:
+  hash: 2e9978bc9d13f0469056c56c1d585c13b845735fe25bbdc0534517bb283160d9
+/home/manu/.ghcup/ghc/9.4.7/lib/ghc-9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSbase-4.17.2.0-ghc9.4.7.so:
+  hash: 96f7089e21bb5b42c7daeace5f47e3130be02e8e51e21152eff1c7ab3762b1cf
+/home/manu/.ghcup/ghc/9.4.7/lib/ghc-9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSbinary-0.8.9.1-ghc9.4.7.so:
+  hash: 28857335f9e5ae12b8fe0e15371308d75e2789459379556d99dac33ba020449e
+/home/manu/.ghcup/ghc/9.4.7/lib/ghc-9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSbytestring-0.11.5.2-ghc9.4.7.so:
+  hash: ccfe77f82fe1da7d3f7a2e028630151b148abe494dbbbb61aff04418db69628d
+/home/manu/.ghcup/ghc/9.4.7/lib/ghc-9.4.7/lib/x86_64-linux-ghc-9.4.7/libHScontainers-0.6.7-ghc9.4.7.so:
+  hash: 97a2e00605093fe4f727796569d5f23f08ef21eac7445bacca2601c94aa9695b
+/home/manu/.ghcup/ghc/9.4.7/lib/ghc-9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSdeepseq-1.4.8.0-ghc9.4.7.so:
+  hash: 713c4b8289cbcd3d1c1417e52b9947c0e5408f5b344361ce8bcd2c6851c022ee
+/home/manu/.ghcup/ghc/9.4.7/lib/ghc-9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSdirectory-1.3.7.1-ghc9.4.7.so:
+  hash: 0d2bdceff010fd13206e6b7432c359ec0f05fd985eb6dfbb42b283482be93f33
+/home/manu/.ghcup/ghc/9.4.7/lib/ghc-9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSexceptions-0.10.5-ghc9.4.7.so:
+  hash: ec86c451a655f3edfeba44fd83a6c3fc9033bcf31bdc1cccbe15dd3a7b5dc3e0
+/home/manu/.ghcup/ghc/9.4.7/lib/ghc-9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSfilepath-1.4.2.2-ghc9.4.7.so:
+  hash: 5ec8a1a856f30d4ef0bd5933f1c9b853874ec895ba94f1fc54972edef1117a83
+/home/manu/.ghcup/ghc/9.4.7/lib/ghc-9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSghc-9.4.7-ghc9.4.7.so:
+  hash: e4c10754824e6f5787b2007fb2c5af8f67faa45c9562fb3429ce8304d461b64f
+/home/manu/.ghcup/ghc/9.4.7/lib/ghc-9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSghc-bignum-1.3-ghc9.4.7.so:
+  hash: 4c6f9785c7d9963e109008ebe1b980c5a301d12da83fad66ae35a17f955562ea
+/home/manu/.ghcup/ghc/9.4.7/lib/ghc-9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSghc-boot-9.4.7-ghc9.4.7.so:
+  hash: 0c1770eef1cdecc91e4860583f715141e21488838ad2c2e69077e2a8b29b6761
+/home/manu/.ghcup/ghc/9.4.7/lib/ghc-9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSghc-boot-th-9.4.7-ghc9.4.7.so:
+  hash: 0f6dbdae2188dd51304710a593e2cc28abb0a2efd2808f3e5ced729d17eaa122
+/home/manu/.ghcup/ghc/9.4.7/lib/ghc-9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSghc-heap-9.4.7-ghc9.4.7.so:
+  hash: a55807484520fb071e1d4af68db25cc9508fbf75fb8e933eb77ba060d97221d0
+/home/manu/.ghcup/ghc/9.4.7/lib/ghc-9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSghc-prim-0.9.1-ghc9.4.7.so:
+  hash: d45e0ddc15311f25e40d45ef4bb99a0b68c5cef511a87c7f41b3bb8c4e40f91e
+/home/manu/.ghcup/ghc/9.4.7/lib/ghc-9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSghci-9.4.7-ghc9.4.7.so:
+  hash: 9fd3f53606b147a8b57a96b20b8cbdaa94f29244139ee191e67a8fba12ee0c0e
+/home/manu/.ghcup/ghc/9.4.7/lib/ghc-9.4.7/lib/x86_64-linux-ghc-9.4.7/libHShpc-0.6.1.0-ghc9.4.7.so:
+  hash: 1c2db9c084ef2df993951f868c79ef35e9afebcf86b6db38627a183e6328f796
+/home/manu/.ghcup/ghc/9.4.7/lib/ghc-9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSinteger-gmp-1.1-ghc9.4.7.so:
+  hash: ae83938c61e0e88db7058135345cb4c7004d8dd322c790bdd94757e05db9a01a
+/home/manu/.ghcup/ghc/9.4.7/lib/ghc-9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSmtl-2.2.2-ghc9.4.7.so:
+  hash: 3c6be4a9c46a5563bb9d485a7aa98e0a55be25bf9ddf35950b7443b00c7c38a6
+/home/manu/.ghcup/ghc/9.4.7/lib/ghc-9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSpretty-1.1.3.6-ghc9.4.7.so:
+  hash: 0c4b7781d099c3fcb291fa02ba43189574e6b863e840434a1872344823772177
+/home/manu/.ghcup/ghc/9.4.7/lib/ghc-9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSprocess-1.6.17.0-ghc9.4.7.so:
+  hash: a4794d6fafc68fdae45f6dba836d54b6c242eb76af8e964b3caa60c92f867665
+/home/manu/.ghcup/ghc/9.4.7/lib/ghc-9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSstm-2.5.1.0-ghc9.4.7.so:
+  hash: 2415ca2b8ee6336af1ed35e0da5803f24568630319cda0893211e99abd35ccc0
+/home/manu/.ghcup/ghc/9.4.7/lib/ghc-9.4.7/lib/x86_64-linux-ghc-9.4.7/libHStemplate-haskell-2.19.0.0-ghc9.4.7.so:
+  hash: 221458f8a59f1f0febed48569facfdef0affc0a0f1496fb2e681ca2f72c55797
+/home/manu/.ghcup/ghc/9.4.7/lib/ghc-9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSterminfo-0.4.1.5-ghc9.4.7.so:
+  hash: 18501dcd7cb29764ed652e98c6ee62645ddd7d5d9f80be52d3373d3d7cb191c9
+/home/manu/.ghcup/ghc/9.4.7/lib/ghc-9.4.7/lib/x86_64-linux-ghc-9.4.7/libHStext-2.0.2-ghc9.4.7.so:
+  hash: 359366d2a844d64a18e881e81347b85d341e4a9a4ab4fd1b89b931dbbdda5942
+/home/manu/.ghcup/ghc/9.4.7/lib/ghc-9.4.7/lib/x86_64-linux-ghc-9.4.7/libHStime-1.12.2-ghc9.4.7.so:
+  hash: f95cc399a7034eded5ff19d81674948b0ba3d51b22a95ebbd47ab79c408c7616
+/home/manu/.ghcup/ghc/9.4.7/lib/ghc-9.4.7/lib/x86_64-linux-ghc-9.4.7/libHStransformers-0.5.6.2-ghc9.4.7.so:
+  hash: 769361154cdb9ffe964b9372c3073c3a18f18cc959df5426875422c84ac8844e
+/home/manu/.ghcup/ghc/9.4.7/lib/ghc-9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSunix-2.7.3-ghc9.4.7.so:
+  hash: 711ce7e860781a38da11850d058d1709db40afec0c0f2f45688aae1ccb9f3664
+? /home/manu/.stack/snapshots/x86_64-linux/98ce0bd3bb3851922c1334b62ec3a4523273a011b466dc7e1153f8084b3ed2d0/9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSbase64-bytestring-1.2.1.0-868erY9LcxPErynDRsw9Rr-ghc9.4.7.so
+: hash: c87076ed6d96b6c903707db273bcb5f994161cd6233a75c946a28ee3bf990b3d
+? /home/manu/.stack/snapshots/x86_64-linux/98ce0bd3bb3851922c1334b62ec3a4523273a011b466dc7e1153f8084b3ed2d0/9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSbasement-0.0.16-JDtFhm6hoERETf7Hqk4dh9-ghc9.4.7.so
+: hash: 8f3ebe110fa39467180225c6a957101566747c9fdba7404a64d5b3e33daa5375
+? /home/manu/.stack/snapshots/x86_64-linux/98ce0bd3bb3851922c1334b62ec3a4523273a011b466dc7e1153f8084b3ed2d0/9.4.7/lib/x86_64-linux-ghc-9.4.7/libHScereal-0.5.8.3-HhYOX7nA5IPEKlBH906ssn-ghc9.4.7.so
+: hash: 0802ae3a557064ed149df85b356ddd071af1a819fae24fd6d9288f4222ff1378
+? /home/manu/.stack/snapshots/x86_64-linux/98ce0bd3bb3851922c1334b62ec3a4523273a011b466dc7e1153f8084b3ed2d0/9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSconstraints-0.13.4-KaiEexT6Swm3FluLFwhYRR-ghc9.4.7.so
+: hash: c258ee694500f604833c02ba21a3e71e41189a310c32e4ea3594f7d32339f746
+? /home/manu/.stack/snapshots/x86_64-linux/98ce0bd3bb3851922c1334b62ec3a4523273a011b466dc7e1153f8084b3ed2d0/9.4.7/lib/x86_64-linux-ghc-9.4.7/libHScryptonite-0.30-8iHW5nF2xiXKqpEMogQ8WH-ghc9.4.7.so
+: hash: fc7e8e9108f8c2ac99454d1e3b8f8972d083c0db44f122c320e0a7b0ec37562b
+? /home/manu/.stack/snapshots/x86_64-linux/98ce0bd3bb3851922c1334b62ec3a4523273a011b466dc7e1153f8084b3ed2d0/9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSghc-paths-0.1.0.12-1UPtQsdCuy16sSUBREXMxJ-ghc9.4.7.so
+: hash: 91f6ef42a224ffe323358662e82e3112ee1e4fbe6aa43ae1a1cf46110ceed974
+? /home/manu/.stack/snapshots/x86_64-linux/98ce0bd3bb3851922c1334b62ec3a4523273a011b466dc7e1153f8084b3ed2d0/9.4.7/lib/x86_64-linux-ghc-9.4.7/libHShashable-1.4.3.0-D7UsbjzS63CIL9MHK13cOI-ghc9.4.7.so
+: hash: b7c47dedcb7a93139fc20549666b2b36346659860527a11094935009c6ec5b09
+? /home/manu/.stack/snapshots/x86_64-linux/98ce0bd3bb3851922c1334b62ec3a4523273a011b466dc7e1153f8084b3ed2d0/9.4.7/lib/x86_64-linux-ghc-9.4.7/libHShaskell-src-exts-1.23.1-GTRnnsM6l8JGJijyJqcL3z-ghc9.4.7.so
+: hash: 1eb48a24f11e36a918b91f3d90ca6cbd7643603024b64dd3363b8cd4c6895a8e
+? /home/manu/.stack/snapshots/x86_64-linux/98ce0bd3bb3851922c1334b62ec3a4523273a011b466dc7e1153f8084b3ed2d0/9.4.7/lib/x86_64-linux-ghc-9.4.7/libHShaskell-src-meta-0.8.12-JG7OME6kCRH1v38omG8ZVo-ghc9.4.7.so
+: hash: f29235227917d0591a8aacf3f98c9eb05baf1b873692846b5566d26a87495c0a
+? /home/manu/.stack/snapshots/x86_64-linux/98ce0bd3bb3851922c1334b62ec3a4523273a011b466dc7e1153f8084b3ed2d0/9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSmemory-0.18.0-GcHFIpnoRJKBLy03NaHAg9-ghc9.4.7.so
+: hash: 37f44804966e38e90e7dff04cbc8fe79554c05977b33633fa9df2d6bc9f2819d
+? /home/manu/.stack/snapshots/x86_64-linux/98ce0bd3bb3851922c1334b62ec3a4523273a011b466dc7e1153f8084b3ed2d0/9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSreflection-2.1.7-L8rUbOjnHlG7HQ73YOua9e-ghc9.4.7.so
+: hash: 31a46043f55afe6a2c344e8e7a7c01b0e733df06277656d7dc951250be9844e9
+? /home/manu/.stack/snapshots/x86_64-linux/98ce0bd3bb3851922c1334b62ec3a4523273a011b466dc7e1153f8084b3ed2d0/9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSsafe-0.3.19-9uHvZjuyLiR13wOGSONZxX-ghc9.4.7.so
+: hash: 96695340bd4126adc654e2d0bb2f855c3ab0ca5a571a051af7c2f113bbda1d8c
+? /home/manu/.stack/snapshots/x86_64-linux/98ce0bd3bb3851922c1334b62ec3a4523273a011b466dc7e1153f8084b3ed2d0/9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSsyb-0.7.2.4-URkW17Cd7D7rpu7G0BDIE-ghc9.4.7.so
+: hash: f331eef61ab2de8bfb59952d5b03f6c87a4b87384ce3020862230c52eb414047
+? /home/manu/.stack/snapshots/x86_64-linux/98ce0bd3bb3851922c1334b62ec3a4523273a011b466dc7e1153f8084b3ed2d0/9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSth-abstraction-0.4.5.0-CynkUuS8OuAKbGjDnje1Fs-ghc9.4.7.so
+: hash: 947f82ee6e9e9e352b8cf2ab7455a6d7a234cb540887b3f28d06f9536d435c91
+? /home/manu/.stack/snapshots/x86_64-linux/98ce0bd3bb3851922c1334b62ec3a4523273a011b466dc7e1153f8084b3ed2d0/9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSth-compat-0.1.4-F5a7GnDk5rxHGhOle8BcYS-ghc9.4.7.so
+: hash: 856f4bc46775a7dcad6217d712a562ecd986745019489c785d5666c1e1515546
+? /home/manu/.stack/snapshots/x86_64-linux/98ce0bd3bb3851922c1334b62ec3a4523273a011b466dc7e1153f8084b3ed2d0/9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSth-expand-syns-0.4.11.0-Gq8pLevdNsNH6CDobZEBF7-ghc9.4.7.so
+: hash: cf56fcbf5c251214d8f7dde06b6205c1b261a8018b51210118cfd066de544afe
+? /home/manu/.stack/snapshots/x86_64-linux/98ce0bd3bb3851922c1334b62ec3a4523273a011b466dc7e1153f8084b3ed2d0/9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSth-lift-0.8.4-Hb96g2HGtQyHkKuMt8Wl3a-ghc9.4.7.so
+: hash: e1dd2d069dcf80fe60abe6336510dbecd3943762909cc1c1f94ad438b62dcb5e
+? /home/manu/.stack/snapshots/x86_64-linux/98ce0bd3bb3851922c1334b62ec3a4523273a011b466dc7e1153f8084b3ed2d0/9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSth-orphans-0.13.14-L48kXpANKdOzSkhldMyay-ghc9.4.7.so
+: hash: d7fe60b11470aa653052c43238963547d7f4869c7ebbd82d0b27cb069beb9af8
+? /home/manu/.stack/snapshots/x86_64-linux/98ce0bd3bb3851922c1334b62ec3a4523273a011b466dc7e1153f8084b3ed2d0/9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSth-reify-many-0.1.10-A59dAaW219iAFEb7OPPcJ-ghc9.4.7.so
+: hash: 3318ee387fccfd7be811fa38ff527c1028d7eeabca59a44d2c1e034da9a71584
+? /home/manu/.stack/snapshots/x86_64-linux/98ce0bd3bb3851922c1334b62ec3a4523273a011b466dc7e1153f8084b3ed2d0/9.4.7/lib/x86_64-linux-ghc-9.4.7/libHStransformers-compat-0.7.2-L6iyd109AYJIQHFSeqJqVF-ghc9.4.7.so
+: hash: fcbc86f6cc5241b0208b3d3ce55ac1b07091f421b814d9e707eb3a886affcb42
+? /home/manu/.stack/snapshots/x86_64-linux/98ce0bd3bb3851922c1334b62ec3a4523273a011b466dc7e1153f8084b3ed2d0/9.4.7/lib/x86_64-linux-ghc-9.4.7/libHStype-equality-1-GeDZojRKCH6645jDbV5JLU-ghc9.4.7.so
+: hash: 517b12cbb18bb454a0fd93e172ac01babfbea638ed53a37ddc5fd562fbaf1c7f
+? /home/manu/myFlame/flame/.stack-work/install/x86_64-linux/98ce0bd3bb3851922c1334b62ec3a4523273a011b466dc7e1153f8084b3ed2d0/9.4.7/lib/x86_64-linux-ghc-9.4.7/libHSflame-plugin-0.1.0.2-1tiqLzqrJn17ZmJMSyEeBw-ghc9.4.7.so
+: hash: 752ff71cfd8bf229de19544ee7beaee9a0c94ba00b3705aa0b75fe4ea4a357a7
+/home/manu/myFlame/flame/flame-runtime/flame-runtime.cabal:
+  hash: d0ac5a44affc9e8b501f1ca7c9dc27cf994cbcf560d0ead8f23f86adb08eae02
+/home/manu/myFlame/flame/flame-runtime/src/Flame/Assert.hs:
+  hash: bbd8e6a994f17e6b20d21244d83e23d4327d0c8a53fa84d73c41c43f03276a30
+/home/manu/myFlame/flame/flame-runtime/src/Flame/Core.hs:
+  hash: af9e3febd1f96812908f1ee5aa255f6f73529eaa81820d1716fc9775c9b328e5
+/home/manu/myFlame/flame/flame-runtime/src/Flame/Do.hs:
+  hash: 96677f63f121d975ffb1b8499594d6b4a6f710a79eacd07f6fa6d25e8f3abce1
+/home/manu/myFlame/flame/flame-runtime/src/Flame/IFC.hs:
+  hash: cea34482a56fb4490275f065cc35408138a5c49efd32c1df66383f4f4b4733f6
+/home/manu/myFlame/flame/flame-runtime/src/Flame/Runtime/Crypto.hs:
+  hash: c68bce918be127d79705b62b2e4bc68174da64d862000e726a2d2fff937cb774
+/home/manu/myFlame/flame/flame-runtime/src/Flame/Runtime/Crypto/KeyMap.hs:
+  hash: 8e6d3ef342aebb3677a5094aea250126063d9516f2ce5379ae19c4c0a6240625
+/home/manu/myFlame/flame/flame-runtime/src/Flame/Runtime/Crypto/KeyedPrincipal.hs:
+  hash: ccb0d6d53523b8abdb6710e84c3f2929303af75753f013e47bfda78de32fc54f
+/home/manu/myFlame/flame/flame-runtime/src/Flame/Runtime/Crypto/Util.hs:
+  hash: 3e0a3ae64ed9e28092e86b74386443aa87ceba737fc6b72888345cc863136eb9
+/home/manu/myFlame/flame/flame-runtime/src/Flame/Runtime/IFCRef.hs:
+  hash: 6cec936f172e3d61860c2c4edfb7ec7b3bc65067bb940b98f149c82c91cc8ad4
+/home/manu/myFlame/flame/flame-runtime/src/Flame/Runtime/IO.hs:
+  hash: b2eba27d2e6a07338b922813936b97ae5793b827935463dce07969600811bbd3
+/home/manu/myFlame/flame/flame-runtime/src/Flame/Runtime/Prelude.hs:
+  hash: b5cc7a181360f2b9c89857ef47c341432101e862b59fcf27b155501695383ab8
+/home/manu/myFlame/flame/flame-runtime/src/Flame/Runtime/Sealed.hs:
+  hash: ba7157da494f8e9d3d456ee8a5204cc2b59d58ee2b815e6d95c9a4244f714621
+/home/manu/myFlame/flame/flame-runtime/src/Flame/TCB/Assume.hs:
+  hash: eaeeeddcc6d2982ff1cd7fc266683e24ea8bc5f4eeb7e49a505f6c93e146566a
+/home/manu/myFlame/flame/flame-runtime/src/Flame/TCB/Freer/IFC.hs:
+  hash: c069d6794e5e01d9b151dc1caac9a662dbc89ec4d596814ffe526a1ebb762f3c
+/home/manu/myFlame/flame/flame-runtime/src/Flame/TCB/IFC.hs:
+  hash: 9879b184f77f77164c0c604a273ad55d73f6bfca693c2d2b235245660dfaba99
+/home/manu/myFlame/flame/flame-runtime/src/MyHasChor/Control/Monad/Freer.hs:
+  hash: c028fb12b1f0885a690c7e0672092f0369ca0e5c7b33f836bd675d080386eebf

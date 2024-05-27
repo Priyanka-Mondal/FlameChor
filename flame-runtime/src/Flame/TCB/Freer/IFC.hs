@@ -51,8 +51,6 @@ data (l::KPrin) ! a  where
   Seal :: { unseal :: a }  -> l!a
   --SealAsync :: { unsealAsync :: Async a} -> l! Async a
 
-
-
  -- deriving (Show, Read) -- these instances should be explicitly
                         -- most likely, they should encrypt and decrypt
 
