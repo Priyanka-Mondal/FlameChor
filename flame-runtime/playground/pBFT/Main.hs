@@ -6,12 +6,12 @@
 
 module Main where
 
-import Choreography.Location
-import Choreography.NetworkAsync
-import Choreography.NetworkAsync.Http
-import Choreography.ChoreoAsync
+import MyHasChor.Choreography.Location
+import MyHasChor.Choreography.NetworkAsync
+import MyHasChor.Choreography.NetworkAsync.Http
+import MyHasChor.Choreography.ChoreoAsync
 import Control.Concurrent.Async
-import Choreography.Flaqr
+import MyHasChor.Choreography.Flaqr
 import System.Environment
 import System.Timeout 
 import Data.Proxy
