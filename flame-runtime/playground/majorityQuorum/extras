@@ -1,3 +1,77 @@
+con' <- (abc, client, abc, fromClient) `sLocally` \un -> do  -- nested with IO 
+    restrict abc (\_ -> do 
+        sSelect'' (sSelect'' (sCompare'' (return (un a')) (return (un b'))) 
+         (sCompare'' (return (un b')) (return (un c')))) (sCompare'' (return (un a')) (return (un c'))))
+  
+  (abc, client, abc, fromClient) `sLocally` \un -> do
+    use @_ @ABC @ABC @ABC (un con') (\d' -> do 
+      case d' of 
+        Right e -> safePutStrLn @ABC $ label "nested IO : Some value"
+        Left _ -> safePutStrLn @ABC $ label "nested IO : Failed"
+       )
+
+  ab <- (abc, client, abc, fromClient) `sLocally` \un -> do
+       restrict @_ @_ @ABC abc (\_ -> (do 
+         sCompare (un a') (un b')))
+  
+  (abc, client, abc, fromClient) `sLocally` \un -> do
+    use @_ @ABC @ABC @ABC (un ab) (\d' -> do 
+      case d' of 
+        Right e -> safePutStrLn @ABC $ label "ab: Some value"
+        Left _ -> safePutStrLn @ABC $ label "ab: Failed"
+       )
+   
+  bc <- (abc, client, abc, fromClient) `sLocally` \un -> do
+       restrict @_ @_ @ABC abc (\_ -> (do 
+         sCompare (un b') (un c')))
+
+  (abc, client, abc, fromClient) `sLocally` \un -> do
+    use @_ @ABC @ABC @ABC (un bc) (\d' -> do 
+      case d' of 
+        Right e -> safePutStrLn @ABC $ label "bc: Some value"
+        Left _ -> safePutStrLn @ABC $ label "bc: Failed"
+       )
+   
+  ca <- (abc, client, abc, fromClient) `sLocally` \un -> do
+        restrict @_ @_ @ABC abc (\_ -> (do 
+         sCompare (un c') (un a')))
+
+  (abc, client, abc, fromClient) `sLocally` \un -> do
+    use @_ @ABC @ABC @ABC (un ca) (\d' -> do 
+      case d' of 
+        Right e -> safePutStrLn @ABC $ label "ca: Some value"
+        Left _ -> safePutStrLn @ABC $ label "ca: Failed"
+       )
+   
+  abc' <- (abc, client, abc, fromClient) `sLocally` \un -> do
+    use @_ @ABC @ABC @ABC (un ab) (\ab -> use @_ @ABC @ABC @ABC (un bc) (\bc -> 
+      restrict @_ @_ @ABC abc (\_ -> do
+              (sSelect (ab) (bc)
+                )))) 
+
+  (abc, client, abc, fromClient) `sLocally` \un -> do
+    use @_ @ABC @ABC @ABC (un abc') (\d' -> do 
+      case d' of 
+        Right e -> safePutStrLn @ABC $ label "ab/bc: Some value"
+        Left _ -> safePutStrLn @ABC $ label "ab/bc: Failed"
+       )
+   
+  conn <- (abc, client, abc, fromClient) `sLocally` \un -> do
+    use @_ @ABC @ABC @ABC (un ca) (\ca -> use @_ @ABC @ABC @ABC (un abc') (\abc' -> 
+      restrict @_ @_ @ABC abc (\_ -> do
+              (sSelect (abc') (ca)
+                )))) 
+
+  (abc, client, abc, fromClient) `sLocally` \un -> do
+    use @_ @ABC @ABC @ABC (un conn) (\d' -> do 
+      case d' of 
+        Right e -> safePutStrLn @ABC $ label "ab/bc/ca: Some value"
+        Left _ -> safePutStrLn @ABC $ label "ab/bc/ca: Failed"
+       )
+   
+
+
+
 -- sSelect' :: forall l l' l'' a pc. (HasFail a, Eq a, Show a, pc ⊑ l, pc ⊑ l') => 
 --     (SPrin pc) -> Async (l!(l'!a)) -> Async (l!(l'!a)) -> Labeled IO pc (pc ! Async (l!(l'!a)))
 -- sSelect' pc a b = do

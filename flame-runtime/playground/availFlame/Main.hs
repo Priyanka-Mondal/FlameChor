@@ -12,21 +12,53 @@
 --{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "[Replace {rtype = Expr, pos = SrcSpan {startLine = 132, startCol = 57, endLine = 132, endCol = 81}, subts = [("a",SrcSpan {startLine = 132, startCol = 64, endLine = 132, endCol = 74}),("b",SrcSpan {startLine = 132, startCol = 77, endLine = 132, endCol = 78})], orig = "a . b"}]" #-}
 
+
 module Main where
-import Control.Concurrent.Async
-import MyHasChor.Choreography.ChoreoAsync
+
+--import MyHasChor.Choreography
 import MyHasChor.Choreography.Location
 import MyHasChor.Choreography.NetworkAsync
 import MyHasChor.Choreography.NetworkAsync.Http
-import MyHasChor.Choreography.Flaqr
-import Data.Proxy
-import Data.Time
-import System.Timeout 
+import MyHasChor.Choreography.ChoreoAsync
+import Control.Concurrent.Async
+import Control.Monad.IO.Class
+--import MyHasChor.Choreography.Flaqr
+--import MyHasChor.Choreography.LabelledAsync
 import System.Environment
+import Data.Time
+import Data.Maybe (isJust, fromJust)
+import Data.Either (isLeft)
+import System.Timeout 
+import Data.Proxy
+--import Control.Monad
 import GHC.TypeLits
-
+import Data.List hiding (compare)
+import Data.Monoid (Last(getLast))
+import GHC.Conc.IO (threadDelay)
+--import Prelude hiding (compare)
+--import Choreography.ChoreoAsync (cond)
 import Flame.Principals
 import Flame.TCB.Freer.IFC
+    ( type (!)(..),
+      Labeled,
+      bind,
+      label,
+      use,
+      protect,
+      join,
+      restrict,
+      runLabeled,
+      relabel' )
+import Flame.Assert
+import GHC.TypeLits (KnownSymbol)
+import Data.Text.Internal.Fusion.Types (CC)
+import Data.Sequence (adjust')
+
+
+maybeToEither :: e -> Maybe a -> Either e a
+maybeToEither e Nothing = Left e
+maybeToEither _ (Just a) = Right a
+
 
 type Client = N "client"
 client :: SPrin Client
@@ -77,6 +109,10 @@ instance Show a => Show (l ! a) where
   show (Seal x) = "Seal " ++ show x
 instance Read a => Read (l ! a) where
   readsPrec _ s = [(Seal x, rest) | ("Seal", rest1) <- lex s, (x, rest) <- readsPrec 0 rest1]
+instance Eq a => Eq (l ! a) where
+  (Seal a) == (Seal b) = a == b
+instance Ord a => Ord (l ! a) where
+  compare (Seal x) (Seal y) = compare x y
 
 cond' :: (Show a, Read a, KnownSymbol l)
      => (Proxy l, a @ l)  -- ^ A pair of a location and a scrutinee located on
@@ -168,47 +204,99 @@ b2GetLine :: Labeled IO FromB2 (FromB2!Int)
 b2GetLine = sGetLine fromB2
 -- instance HasFail (BS!a) where
 --   failVal = ()
+timeOut :: Int 
+timeOut = 10000000
 
-largest ::forall l l' l'' a. (HasFail a, Eq a, l ⊑ l'', l' ⊑ l'', Show a, Ord a) => 
-    Async (l!(l'!a)) -> Async (l!(l'!a)) -> IO (Async (l!(l'!a)))
-largest a b = do 
- z <- timeout 10000000 (waitBoth a b)
- case z of 
-  Nothing -> async (return $ Seal (Seal failVal))
-  Just (x,y) -> do 
-    let a1 = join x
-    let b1 = join y
-    case (a1, b1) of 
-      (Seal a1', Seal b1') -> if a1' > b1' then return a --async (return a1)
-                              else return b --async (return b1) 
-      _ -> async (return $ Seal (Seal failVal))
+data Failed = Fail
+instance Show Failed where
+    show Fail = "Fail"
 
-                            
-sSelect :: forall l l' l'' a. (HasFail a, Eq a, l ⊑ l'', l' ⊑ l'', Show a) => 
-    Async (l!(l'!a)) -> Async (l!(l'!a)) -> IO (Async (l!(l'!a)))
-sSelect a b = do
-    a' <- timeout time (wait a)
-    case a' of 
-      (Just e) -> do 
-        let e1 = join e
-        case e1 of 
-          Seal c | c /= failVal -> do 
-            return a --async (return e1)
-          _ -> do 
-                b' <- timeout time (wait b)
-                case b' of 
-                  (Just e) -> do
-                    let b1 = join e
-                    return b -- async (return b1) 
-                  Nothing -> async (return (Seal (Seal failVal)))
-      _ -> do -- Nothing i.e. a did not arrive
-         b' <- timeout time (wait b)
-         case b' of 
-          (Just e) -> do 
-            let b1' = join e
-            return b -- async( return b1')
-          Nothing -> do 
-            async (return (Seal (Seal failVal)))
+class CanFail m where
+  ready  :: m a -> IO Bool -- do we ever want a non-IO effect?
+  failed :: m a -> IO Bool
+  force  :: m a -> IO (Either Failed a)
+  forceEither :: m a -> m b -> IO (Either (Either Failed a) (Either Failed b))
+
+  -- | Blocks until force completes or timeout is reached
+  forceUntil :: Int -> m a -> IO (Either Failed a)
+  forceUntil n a = timeout n (force a) >>= \case 
+                     Just (Right a) -> return $ Right a
+                     _ -> return $ Left Fail
+
+  -- | Blocks until force on a or b completes or timeout is reached.
+  forceEitherUntil :: Int -> m a -> m b -> IO (Either (Either Failed a) (Either Failed b))
+  forceEitherUntil n a b = timeout n (forceEither a b) >>= \case 
+                     Just (Left ea) -> return $ Left ea
+                     Just (Right eb) -> return $ Right eb
+                     Nothing -> return $ Left (Left Fail)
+
+eitherToCanFail :: Either e a -> Either Failed a
+eitherToCanFail = either (const $ Left Fail) Right
+
+instance (CanFail Async) where
+  -- | Returns true if Async has completed (successfully or not)
+  ready a = poll a >>= \r -> return $ isJust r
+  -- | Returns true if Async has completed with an exception
+  failed a = poll a >>= \r -> return (isJust r && isLeft (fromJust r))
+
+  -- | Blocks until Async completes 
+  force a = waitCatch a >>= \case
+    Left exc -> return $ Left Fail
+    Right a'' -> return $ Right a''
+
+  -- | Blocks until Async completes 
+  forceEither a b = waitEitherCatch a b >>= \case
+      Left ea  -> return $ (Left  . eitherToCanFail) ea
+      Right eb -> return $ (Right . eitherToCanFail) eb
+  
+instance (CanFail (Either Failed)) where
+  ready a = return True
+  failed = return . isLeft
+  force = return
+  forceEither a b = do 
+    case a of
+      Left ea -> case b of 
+        Left eb -> return $ (Right (Left Fail)) -- ?? Left (Left Fail)
+        Right b' -> return $ Right (Right b') --(Right . eitherToCanFail) b
+      Right a' -> return $ Left (Right a') --(Right . eitherToCanFail) b
+
+sSelect' :: forall l1 l2 m m' a pc. (CanFail m, Eq a, pc ⊑ l1, pc ⊑ l2) => (SPrin pc)
+  -> Labeled IO pc (m (l1!a)) 
+  -> Labeled IO pc (m (l2!a))
+  -> Labeled IO pc (pc!(Either Failed ((C (l1 ⊔ l2) ∧ I(l1 ∨ l2) ∧ A(l1 ∧ l2))!a)))
+sSelect' pc a' b' = do
+  a <- a'
+  b <- b'  
+  restrict pc (\_ ->
+    (liftIO $ forceEitherUntil timeOut a b) >>= \case
+        Right (Left Fail) -> return $ Left Fail
+        Left (Left Fail) -> return $ Left Fail
+        Left (Right (Seal a')) -> return $ Right (Seal a')
+        Right (Right (Seal b')) -> return $ Right (Seal b')
+        )
+
+largest ::forall l1 l2 m a pc. (CanFail m, Eq a, pc ⊑ l1, pc ⊑ l2, Show a, Ord a) => (SPrin pc)
+  ->   Labeled IO pc (m (l1!a)) 
+  -> Labeled IO pc (m (l2!a))
+  -> Labeled IO pc (pc!(Either Failed ((C (l1 ⊔ l2) ∧ I(l1 ∧ l2) ∧ A(l1 ∨ l2))!a)))
+largest pc a' b' = do
+  a <- a'
+  b <- b'
+  restrict pc (\_ -> 
+      (liftIO $ forceEitherUntil timeOut a b) >>= \case
+        Left (Left Fail) -> return (Left Fail)
+        Left (Right (Seal a')) -> 
+           (liftIO $ forceUntil timeOut b) >>= \case 
+            Left Fail -> return $ Left Fail
+            Right (Seal b') -> return $ if a' > b' then Right (Seal a') else Right (Seal b')
+
+        Right (Left Fail) -> return (Left Fail)
+        Right (Right (Seal b')) -> 
+           (liftIO $ forceUntil timeOut a) >>= \case 
+            Left Fail -> return $ Left Fail
+            Right (Seal a') -> return $ if a' > b' then Right (Seal b') else Right (Seal b')
+    )
+
 
 largestAvailableBalance :: Labeled (Choreo IO) BS ((BS ! (Int)) @ "client")
 largestAvailableBalance = do
@@ -226,21 +314,18 @@ largestAvailableBalance = do
   bal1' <- (sym b1, bs, fromB1, bal1) ~>: sym client
   bal2' <- (sym b2, bs, fromB2, bal2) ~>: sym client
 
-  largest <- (bs, client, bs, fromClient) `sLocally` \un -> do
-          restrict @_ @_ @BS bs (\_ -> (do 
-            largest @BS @BS @BS (un bal1') (un bal2') ))
+  -- largest <- (bs, client, bs, fromClient) `sLocally` \un -> do
+  --         restrict @_ @_ @BS bs (\_ -> (do 
+  --           largest @BS @BS @BS (un bal1') (un bal2') ))
           
-  available <- (bs, client, bs, fromClient) `sLocally` \un -> do
-       restrict @_ @_ @BS bs (\_ -> (do 
-         sSelect @BS @BS @BS (un bal1') (un bal2')))
-  
-  larAvail <- (bs, client, bs, fromClient) `sLocally` \un -> do
-    use @_ @BS @BS @BS (un largest) (\lar -> use @_ @BS @BS @BS (un available) (\avl -> --protect
-      join. join @BS @BS @BS <$> restrict @_ @_ @BS bs (\_ ->
-              (do 
-                s <- sSelect @BS @BS @BS (lar) (avl)
-                (wait s)))))
+  available <- (bs, client, bs, fromClient) `sLocally` \un -> do  -- almost nested with Labeled IO
+      bal <- (largest bs (return (un bal1')) (return (un bal2')))
+      sel <- (sSelect' bs (return (un bal1')) (return (un bal2'))) 
+      use bal (\bal' -> use sel (\sel'-> sSelect' bs (return bal') (return sel')))   
 
+  -- available <- (bs, client, bs, fromClient) `sLocally` \un -> do
+  --   (sSelect' bs (return (un bal1')) (return (un bal2'))) 
+   
   (bs, b2, bs, fromB2) `sLocally` (\un -> do
              relabel' bs b2GetLine)
   
@@ -249,7 +334,7 @@ largestAvailableBalance = do
 
   (bs, client, bs, fromClient) `sLocally` \un -> do
               safePutStrLn @BS $ label "largest available balance:"
-              safePutStrLn @BS $ (un larAvail)
+              safePutStrLn @BS $ (un available)
               relabel' bs clientGetLine
  
 main :: IO ()
@@ -265,3 +350,31 @@ main = do
                        , ("b1", ("localhost", 4343))
                        , ("b2", ("localhost", 4344))
                        ]
+
+
+
+-- sSelect :: forall l l' l'' a. (HasFail a, Eq a, l ⊑ l'', l' ⊑ l'', Show a) => 
+--     Async (l!(l'!a)) -> Async (l!(l'!a)) -> IO (Async (l!(l'!a)))
+-- sSelect a b = do
+--     a' <- timeout time (wait a)
+--     case a' of 
+--       (Just e) -> do 
+--         let e1 = join e
+--         case e1 of 
+--           Seal c | c /= failVal -> do 
+--             return a --async (return e1)
+--           _ -> do 
+--                 b' <- timeout time (wait b)
+--                 case b' of 
+--                   (Just e) -> do
+--                     let b1 = join e
+--                     return b -- async (return b1) 
+--                   Nothing -> async (return (Seal (Seal failVal)))
+--       _ -> do -- Nothing i.e. a did not arrive
+--          b' <- timeout time (wait b)
+--          case b' of 
+--           (Just e) -> do 
+--             let b1' = join e
+--             return b -- async( return b1')
+--           Nothing -> do 
+--             async (return (Seal (Seal failVal)))                       

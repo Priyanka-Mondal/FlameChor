@@ -1,8 +1,17 @@
-{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE LambdaCase     #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE PartialTypeSignatures #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE PostfixOperators, TypeOperators #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RankNTypes #-}
+{-# OPTIONS_GHC -fplugin Flame.Solver -fobject-code #-}
+--{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "[Replace {rtype = Expr, pos = SrcSpan {startLine = 132, startCol = 57, endLine = 132, endCol = 81}, subts = [("a",SrcSpan {startLine = 132, startCol = 64, endLine = 132, endCol = 74}),("b",SrcSpan {startLine = 132, startCol = 77, endLine = 132, endCol = 78})], orig = "a . b"}]" #-}
+
 
 module Main where
 

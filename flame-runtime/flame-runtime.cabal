@@ -131,23 +131,23 @@ library
 --         , flame-runtime
 --         --, HasChor
 
--- executable availf
---     hs-source-dirs:   playground/availFlame
---     main-is:          Main.hs
---     default-language: GHC2021
---     build-depends:
---         , flame-plugin
---         , constraints
---         , reflection
---         , containers
---         , mtl
---         , text
---         , base    >= 4.16 && < 4.20
---         , time    >= 1.11 && < 1.13
---         , async >= 2.2  && < 2.3
---         , freer-simple
---         , flame-runtime
---         --, HasChor
+executable availf
+    hs-source-dirs:   playground/availFlame
+    main-is:          Main.hs
+    default-language: GHC2021
+    build-depends:
+        , flame-plugin
+        , constraints
+        , reflection
+        , containers
+        , mtl
+        , text
+        , base    >= 4.16 && < 4.20
+        , time    >= 1.11 && < 1.13
+        , async >= 2.2  && < 2.3
+        , freer-simple
+        , flame-runtime
+        --, HasChor
 
 
 
@@ -208,26 +208,26 @@ executable mq
 
 
 
--- executable pbft
---     hs-source-dirs:   playground/pBFT
---     main-is:          Main.hs
---     default-language: GHC2021
---     build-depends:
---         , flame-plugin
---         , constraints
---         , reflection
---         , containers
---         , mtl
---         , text
---         , base    >= 4.16 && < 4.20
---         , time    >= 1.11 && < 1.13
---         , async >= 2.2  && < 2.3
---         , freer-simple
---         , HasChor
---         , flame-runtime
---         , random >= 1.2.1.1
---         , array >=0.5.4.0
---         , unordered-containers >= 0.2.19.1
+executable pbft
+    hs-source-dirs:   playground/pBFT
+    main-is:          Main.hs
+    default-language: GHC2021
+    build-depends:
+        , flame-plugin
+        , constraints
+        , reflection
+        , containers
+        , mtl
+        , text
+        , base    >= 4.16 && < 4.20
+        , time    >= 1.11 && < 1.13
+        , async >= 2.2  && < 2.3
+        , freer-simple
+        , HasChor
+        , flame-runtime
+        , random >= 1.2.1.1
+        , array >=0.5.4.0
+        , unordered-containers >= 0.2.19.1
       
 -- executable bookseller-2
 --     hs-source-dirs:   playground/bookseller-2
