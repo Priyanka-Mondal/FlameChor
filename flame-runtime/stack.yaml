@@ -1,0 +1,4 @@
+resolver: lts-21.19
+
+packages:
+- flame-runtime
