@@ -5,7 +5,10 @@
 {-# LANGUAGE TypeFamilies #-}
 
 module Main where
-
+--{-# HLINT ignore "[Replace {rtype = Expr, pos = SrcSpan {startLine = 132, startCol = 57, endLine = 132, endCol = 81}, subts = [("a",SrcSpan {startLine = 132, startCol = 64, endLine = 132, endCol = 74}),("b",SrcSpan {startLine = 132, startCol = 77, endLine = 132, endCol = 78})], orig = "a . b"}]" #-}
+{- HLINT ignore "Redundant bracket" -}
+{- HLINT ignore "Use camelCase" -}
+{- HLINT ignore " Use const" -}
 import Choreography.Location
 import Choreography.NetworkAsync
 import Choreography.NetworkAsync.Http

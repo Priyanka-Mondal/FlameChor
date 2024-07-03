@@ -9,10 +9,14 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 {-# OPTIONS_GHC -fplugin Flame.Solver -fobject-code #-}
---{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# HLINT ignore "[Replace {rtype = Expr, pos = SrcSpan {startLine = 132, startCol = 57, endLine = 132, endCol = 81}, subts = [("a",SrcSpan {startLine = 132, startCol = 64, endLine = 132, endCol = 74}),("b",SrcSpan {startLine = 132, startCol = 77, endLine = 132, endCol = 78})], orig = "a . b"}]" #-}
-
-
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Redundant bracket" #-}
+{-# HLINT ignore "Use camelCase" #-}
+{-# HLINT ignore "Use const" #-}
+{-# HLINT ignore "Avoid lambda" #-}
+{-# HLINT ignore "Redundant $" #-}
+{-# HLINT ignore "Use let" #-}
+ 
 module Main where
 
 --import MyHasChor.Choreography
@@ -77,12 +81,12 @@ type Client = N "client"
 client :: SPrin Client
 client = SName (Proxy :: Proxy "client")
 
-type L = N "Leader"
-leader :: SPrin L
-leader = SName (Proxy :: Proxy "Leader")
+type Leader = N "leader"
+leader :: SPrin Leader
+leader = SName (Proxy :: Proxy "leader")
 
 
-type ABC = ((((E \/ B) \/ D) \/ Client ) \/ L)
+type ABC = ((((E \/ B) \/ D) \/ Client ) \/ Leader)
    --deriving (Show)
 
 abc :: SPrin ABC
@@ -291,7 +295,7 @@ sSelect' pc a' b' = do
   a <- a'
   b <- b'  
   restrict pc (\_ ->
-    (liftIO $ forceEitherUntil timeOut a b) >>= \case
+    liftIO $ forceEitherUntil timeOut a b >>= \case
         Right (Left Fail) -> return $ Left Fail
         Left (Left Fail) -> return $ Left Fail
         Left (Right (Seal a')) -> return $ Right (Seal a')
@@ -336,16 +340,16 @@ sCompare' pc a' b' = do
   a <- a'
   b <- b'
   restrict pc (\_ -> 
-      (liftIO $ forceEitherUntil timeOut a b) >>= \case
+      liftIO $ forceEitherUntil timeOut a b >>= \case
         Left (Left Fail) -> return (Left Fail)
         Left (Right (Seal a')) -> 
-           (liftIO $ forceUntil timeOut b) >>= \case 
+           liftIO $ forceUntil timeOut b >>= \case 
             Left Fail -> return $ Left Fail
             Right (Seal b') -> return $ if a' == b' then Right (Seal a') else Left Fail
 
         Right (Left Fail) -> return (Left Fail)
         Right (Right (Seal b')) -> 
-           (liftIO $ forceUntil timeOut a) >>= \case 
+           liftIO $ forceUntil timeOut a >>= \case 
             Left Fail -> return $ Left Fail
             Right (Seal a') -> return $ if a' == b' then Right (Seal b') else Left Fail
     )
@@ -401,65 +405,77 @@ pbft = do
       safePutStrLn @ABC $ label "Client$ Input:"
       relabel' abc clientGetLine
   
-  reqrq <- (abc, leader, abc, fromLeader) `sLocally` \_ -> do
-      safePutStrLn @ABC $ label "Leader$ Input:"
-      relabel' abc leaderGetLine
-
   req <- (sym client, abc, fromClient, request) ~>: sym leader 
 
   --preprepare 
-  bb <- preprepare (req, locLState, locAState)
-  request <- (abc, leader, abc, fromLeader) `sLocally` \_ -> do
-      safePutStrLn @ABC $ label "Leader$ Input:"
-      relabel' abc leaderGetLine
-  --bb <- preprepare (req, leader, locLState, locA, locAState, locB, locBState, locC, locCState)
+  (ppa, ppb, ppc) <- preprepare (req, locLState)
+  bb <- prepare (ppa, ppb, ppc, locLState, locAState, locBState, locCState)
   --(prepa, prepb, prepc)
   return ()
   
 
   {-  
 
-  (prepa, prepb, prepc) <- preprepare (req, leader, locLState, locA, locAState, locB, locBState, locC, locCState)
   (ml, ma, mb, mc) <- prepare (leader, locLState, req) (locA, locAState, prepa) (locB, locBState, prepb) (locC, locCState, prepc) 
   (repl, repa, repb, repc) <- commit (leader, locLState, ml) (locA, locAState, ma) (locB, locBState, mb) (locC, locCState, mc)
   reply(leader, locLState, repl) (locA, locAState, repa) (locB, locBState, repb) (locC, locCState, repc)
 
   return () 
 -}
-preprepare :: (Async (ABC ! (ABC ! Int)) @ "Leader", (ABC ! IORef State) @ "Leader", (ABC ! IORef State) @ "A")
-                  -> Labeled (Choreo IO) ABC (ABC!())--([Async (ABC ! Int) @ a, Async(ABC ! Int) @ b, Async (ABC ! Int) @ c]))
-preprepare (req, statel, statea) =  do
-                           (abc, leader, abc, fromLeader) `sLocally` \un -> do  
-                             safePutStrLn $ label "prepare leader:"
+preprepare :: (Async (ABC ! (ABC ! Int)) @ "leader", (ABC ! IORef State) @ "leader")
+                  -> Labeled (Choreo IO) ABC ((Async (ABC ! (ABC ! Int)) @ "A", 
+                  Async(ABC ! (ABC ! Int)) @ "B", 
+                  Async (ABC ! (ABC ! Int)) @ "C"))
+preprepare (req, statel) =  do
                            req' <- (abc, leader, abc, fromLeader) `sLocally` \un -> do  
-                             safePutStrLn @ABC $ label $ "prepare leader:"
-                             x <- (return $ un req)  
-                             x' <- (join <$> restrict abc (\_-> liftIO $ wait x)) --(return $ wait x) (\y -> y)  -- Async a -> IO a
-                             safePutStrLn @ABC $ label $ "prepare leader:" ++ show x'
-                             safeModifyIORef (un statel) nextState 
+                             x <- return $ un req
+                             let z' = join @_ @_ @ABC <$> wait x
+                             x' <- (join @_ @_ @ABC <$> restrict abc (\_-> z'))
+                             safePutStrLn @ABC $ label $ "preprepare leader:" ++ show x'
+                             safeModifyIORef (un statel) nextState
                              return x'
-                          --  prepa <-  (sym leader, abc, fromLeader, req') ~>: sym locA
-                          --  prepb <-  (sym leader, abc, fromLeader, req') ~>: sym locB  
-                          --  prepc <-  (sym leader, abc, fromLeader, req') ~>: sym locC
-                           return $ label () --[prepa, prepb, prepc]
-                           
-{-
-preprepare :: forall a b c l m. 
--- (KnownSymbol a, KnownSymbol b, KnownSymbol c, KnownSymbol l) => 
-                     (Async (ABC ! (ABC ! Int)) @ l, Proxy l, (ABC ! IORef State) @ l, SPrin a, (ABC ! IORef State) @ a,
-                      Proxy b, (ABC ! IORef State) @ b, Proxy c, (ABC ! IORef State) @ c) 
-                  -> Labeled (Choreo IO) ABC (ABC!())--([Async (ABC ! Int) @ a, Async(ABC ! Int) @ b, Async (ABC ! Int) @ c]))
-preprepare (req, locl, statel, loca, statea, locb, stateb, locc, statec) =  do
-                           req' <- (abc, leader, abc, fromLeader) `sLocally` \un -> do  
-                            x <- joinLoc $ wait (un req)  
-                            safePutStrLn abc $ "prepare leader:" ++ show x
-                            modifyIORef (un statel) nextState 
-                            return x
-                           prepa <-  (sym locl, abc, fromLeader, req') ~>: sym loca
-                           prepb <-  (sym locl, abc, fromLeader, req') ~>: sym locb  
-                           prepc <-  (sym locl, abc, fromLeader, req') ~>: sym locc
-                           return () --[prepa, prepb, prepc]
-                           -}
+                           prepa <-  (sym leader, abc, fromLeader, req') ~>: sym locA
+                           prepb <-  (sym leader, abc, fromLeader, req') ~>: sym locB  
+                           prepc <-  (sym leader, abc, fromLeader, req') ~>: sym locC
+                           return $ (prepa, prepb, prepc)
+
+prepare ::  Async (ABC ! (ABC ! Int)) @ "A" -> Async (ABC ! (ABC ! Int)) @ "B" ->
+            Async (ABC ! (ABC ! Int)) @ "C" -> (ABC ! IORef State) @ "leader" ->
+              (ABC ! IORef State) @ "A" -> (ABC ! IORef State) @ "B" ->
+                (ABC ! IORef State) @ "C"
+prepare ppa ppb ppc statel statea stateb statec =  do
+                    reqa <-  loca `locally` \un -> do 
+                              x <-  wait (un msga) 
+                              modifyIORef (un statea) nextState 
+                              putStrLn $ "prepare A:" ++ show x
+                              return x 
+                    al <- (loca, reqa) ~> locl
+                    ab <- (loca, reqa) ~> locb
+                    ac <- (loca, reqa) ~> locc
+    
+                    reqb <- locb `locally` \un -> do 
+                              x <- wait (un msgb) 
+                              modifyIORef (un stateb) nextState 
+                              putStrLn $ "prepare B:" ++ show x
+                              return x 
+                    bl <- (locb, reqb) ~> locl
+                    ba <- (locb, reqb) ~> loca
+                    bc <- (locb, reqb) ~> locc
+                  
+                    reqc <- locc `locally` \un -> do 
+                              x <- wait (un msgc) 
+                              modifyIORef (un statec) nextState 
+                              putStrLn $ "prepare C:" ++ show x
+                              return x
+                    cl <- (locc, reqc) ~> locl
+                    ca <- (locc, reqc) ~> loca
+                    cb <- (locc, reqc) ~> locb 
+                    retl <- locl `locally` \un -> return [un req, un al, un bl, un cl]
+                    reta <- loca `locally` \un -> return [un msga, un ba, un ca]
+                    retb <- locb `locally` \un -> return [un msgb, un ab, un cb]
+                    retc <- locc `locally` \un -> return [un msgc, un ac, un bc]
+                    return (retl, reta, retb, retc) 
+                    
 {-
 prepare :: forall (l :: LocTy) (a:: LocTy) (b:: LocTy) (c :: LocTy) m. (KnownSymbol l, KnownSymbol a, KnownSymbol b, KnownSymbol c) => 
          (Proxy l, IORef State @ l, Async Int @ l)  
@@ -499,8 +515,8 @@ prepare (locl, statel, req) (loca, statea, msga) (locb, stateb, msgb) (locc, sta
                     retb <- locb `locally` \un -> return [un msgb, un ab, un cb]
                     retc <- locc `locally` \un -> return [un msgc, un ac, un bc]
                     return (retl, reta, retb, retc) 
-                
-                  
+  -}              
+{-                
 commit :: forall (l::LocTy) (a :: LocTy) (b :: LocTy) (c :: LocTy). 
           (KnownSymbol l, KnownSymbol a, KnownSymbol b, KnownSymbol c) => 
              (Proxy l, IORef State @ l, [Async Int] @ l) 
