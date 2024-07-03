@@ -15,44 +15,340 @@
 
 module Main where
 
-import Choreography.Location
-import Choreography.NetworkAsync
-import Choreography.NetworkAsync.Http
-import Choreography.ChoreoAsync
+--import MyHasChor.Choreography
+import MyHasChor.Choreography.Location
+import MyHasChor.Choreography.NetworkAsync
+import MyHasChor.Choreography.NetworkAsync.Http
+import MyHasChor.Choreography.ChoreoAsync
 import Control.Concurrent.Async
-import Choreography.Flaqr
+import Control.Monad.IO.Class
+--import MyHasChor.Choreography.Flaqr
+--import MyHasChor.Choreography.LabelledAsync
 import System.Environment
+import Data.Time
+import Data.Maybe (isJust, fromJust)
+import Data.Either (isLeft)
 import System.Timeout 
 import Data.Proxy
-import Control.Monad
+import Data.IORef
+--import Control.Monad
 import GHC.TypeLits
 import Data.List hiding (compare)
 import Data.Monoid (Last(getLast))
 import GHC.Conc.IO (threadDelay)
 import Prelude hiding (compare)
-import Control.Monad.State qualified as Seq
-import Data.IORef
-import System.Random
-import qualified Data.Array as A
-import Data.HashMap.Strict qualified as HM
-import Data.HashMap.Strict (HashMap, (!), insert) 
-import Data.Map.Internal.Debug (node)
-import Data.Bits (Bits(xor))
+--import Choreography.ChoreoAsync (cond)
+import Flame.Principals
+import Flame.TCB.Freer.IFC
 
-locA :: Proxy "A"
-locA = Proxy
+    ( type (!)(..),
+      Labeled,
+      bind,
+      label,
+      use,
+      protect,
+      join,
+      restrict,
+      runLabeled,
+      relabel' )
+import Flame.Assert
+import GHC.TypeLits (KnownSymbol)
+import Data.Text.Internal.Fusion.Types (CC)
+import Data.Sequence (adjust')
+import System.IO.Error (modifyIOError)
+maybeToEither :: e -> Maybe a -> Either e a
+maybeToEither e Nothing = Left e
+maybeToEither _ (Just a) = Right a
 
-locB :: Proxy "B"
-locB = Proxy
 
-locC :: Proxy "C"
-locC = Proxy
+type E = N "A"
+locA :: SPrin E
+locA = SName (Proxy :: Proxy "A")
 
-leader :: Proxy "leader"
-leader = Proxy
+type B = N "B"
+locB :: SPrin B
+locB = SName (Proxy :: Proxy "B")
 
-client :: Proxy "client"
-client = Proxy 
+type D = N "C"
+locC :: SPrin D
+locC = SName (Proxy :: Proxy "C")
+
+type Client = N "client"
+client :: SPrin Client
+client = SName (Proxy :: Proxy "client")
+
+type L = N "Leader"
+leader :: SPrin L
+leader = SName (Proxy :: Proxy "Leader")
+
+
+type ABC = ((((E \/ B) \/ D) \/ Client ) \/ L)
+   --deriving (Show)
+
+abc :: SPrin ABC
+abc = ((((locA *\/ locB) *\/ locC) *\/ client) *\/ leader)
+
+type FromA = ABC 
+fromA :: SPrin ABC
+fromA = abc
+
+type FromB = ABC 
+fromB :: SPrin ABC
+fromB = abc
+
+type FromC = ABC 
+fromC :: SPrin ABC
+fromC = abc
+
+type FromClient = ABC 
+fromClient :: SPrin ABC
+fromClient = abc
+
+type FromLeader = ABC 
+fromLeader :: SPrin ABC
+fromLeader = abc
+
+sPutStrLn :: Show a => SPrin pc -> (l ⊑ pc) => l!a -> Labeled IO pc (pc!())
+sPutStrLn pc la = restrict pc (\open -> print (open la))
+
+sGetLine :: SPrin pc -> Labeled IO pc (pc!Int)
+sGetLine pc = restrict pc (\_ -> readLn)
+
+strGetLine :: SPrin pc -> Labeled IO pc (pc!String)
+strGetLine pc = restrict pc (\_ -> readLn)
+
+safePutStrLn :: forall l a. (Show a, l ⊑ ABC) => l!a 
+                      -> Labeled IO ABC (ABC!())
+safePutStrLn =  sPutStrLn abc
+
+safeNewIORef :: forall l a pc. (Show a, l ⊑ ABC) => a 
+                      -> Labeled IO ABC (ABC!(IORef a))
+safeNewIORef s =  restrict abc (\_ -> newIORef s)
+
+safeReadIORef :: forall l a pc. (Show a, l ⊑ ABC) => 
+                         l!IORef a
+                      -> Labeled IO ABC (ABC!a)
+safeReadIORef s =  restrict abc (\open -> readIORef (open s))
+
+safeModifyIORef :: forall l a pc. (Show a, l ⊑ ABC) => 
+                         l!IORef a ->(a->a)
+                      -> Labeled IO ABC (ABC!())
+safeModifyIORef s f = restrict abc (\open -> modifyIORef (open s) f)
+--
+--IORef State -> (State -> State) -> IO ()
+
+aGetLine :: Labeled IO FromA (FromA ! Int)
+aGetLine = sGetLine fromA
+
+bGetLine :: Labeled IO FromB (FromB ! Int)
+bGetLine = sGetLine fromB
+
+cGetLine :: Labeled IO FromC (FromC ! Int)
+cGetLine = sGetLine fromC
+
+clientGetLine :: Labeled IO FromClient (FromClient!Int)
+clientGetLine = sGetLine fromClient
+
+leaderGetLine :: Labeled IO FromLeader (FromLeader!Int)
+leaderGetLine = sGetLine fromLeader
+--------------
+--------------
+instance Show a => Show (l ! a) where
+  show (Seal x) = "Seal " ++ show x
+instance Read a => Read (l ! a) where
+  readsPrec _ s = [(Seal x, rest) | ("Seal", rest1) <- lex s, (x, rest) <- readsPrec 0 rest1]
+instance Eq a => Eq (l ! a) where
+  (Seal a) == (Seal b) = a == b
+
+cond' :: (Show a, Read a, KnownSymbol l)
+     => (Proxy l, a @ l)  -- ^ A pair of a location and a scrutinee located on
+                          -- it.
+     -> (a -> Choreo m b) -- ^ A function that describes the follow-up
+                          -- choreographies based on the value of scrutinee.
+     -> Choreo m b
+cond' (l, a) c = undefined -- stub for type signature
+
+labelInA :: l!(Async a @ loc) -> Async (l!a) @ loc
+labelInA (Seal asl) = case asl of
+                        Wrap as -> Wrap $ Prelude.fmap Seal as
+                        Empty   -> Empty
+
+labelIn :: l!(a @ loc) -> (l!a) @ loc
+labelIn (Seal asl) = case asl of
+                        Wrap as -> Wrap $ Seal as
+                        Empty   -> Empty
+
+
+labelInM :: Monad m => Labeled m pc (l!(a @ loc)) -> Labeled m pc ((l!a) @ loc)
+labelInM e = labelIn <$> e
+
+labelInMA :: Monad m => Labeled m pc (l!(Async a @ loc)) -> Labeled m pc (Async (l!a) @ loc)
+labelInMA e = labelInA <$> e
+
+labelOutA :: Async (l!a) @ loc -> l!(Async a @ loc)
+labelOutA (Wrap as) = Seal (Wrap $ Prelude.fmap (\(Seal a) -> a) as)
+labelOutA Empty     = Seal Empty
+
+labelOut :: (l!a) @ loc -> l!(a @ loc)
+labelOut (Wrap as) = Seal (Wrap $ (\(Seal a) -> a) as)
+labelOut Empty     = Seal Empty
+
+labelOutMA :: Labeled m pc (Async (l!a) @ loc) -> Labeled m pc (l!(Async a @ loc))
+labelOutMA e = labelOutA <$> e
+
+labelOutM :: Labeled m pc ((l!a) @ loc) -> Labeled m pc (l!(a @ loc))
+labelOutM e = labelOut <$> e
+
+joinLoc :: forall l l' l'' loc a. (l ⊑ l'', l' ⊑ l'') => (l!(l'!a)) @ loc -> (l''!a) @ loc
+joinLoc (Wrap lla) = Wrap $ join lla
+joinLoc Empty      = Empty
+
+sLocally :: forall pc loc_pc l loc m a. (Monad m, KnownSymbol loc, pc ⊑ loc_pc, pc ⊑ l)
+               => (SPrin pc, SPrin (N loc), SPrin loc_pc, SPrin l)
+               -> (Unwrap loc -> Labeled m loc_pc (l!a))
+               -> Labeled (Choreo m) pc ((l!a) @ loc)
+sLocally (pc, loc, loc_pc, l) k = do
+  result <- restrict pc (\_ -> locally (sym loc) (\un -> runLabeled $ k un))
+  return $ joinLoc (labelIn result)
+
+(~>:) :: (Show a, Read a, KnownSymbol loc, KnownSymbol loc') --, (N loc') ≽ (C pc), (N loc) ≽ (I pc))
+     => (Proxy loc, SPrin pc, SPrin l, (l!a) @ loc)  -- ^ A triple of a sender's location, a clearance, 
+                                           -- and a value located
+                                           -- at the sender
+     -> Proxy loc'                           -- ^ A receiver's location.
+     -> Labeled (Choreo m) pc (Async (pc!(l!a)) @ loc')
+(~>:) (loc, pc, l, la) loc' = do
+  result <- restrict pc (\_ -> (loc, la) ~> loc')
+  return $ labelInA result
+-- ab <- (client, abc, fromClient) `ccompare` a' b'
+
+data Failed = Fail
+class CanFail m where
+  ready  :: m a -> IO Bool -- do we ever want a non-IO effect?
+  failed :: m a -> IO Bool
+  force  :: m a -> IO (Either Failed a)
+  forceEither :: m a -> m b -> IO (Either (Either Failed a) (Either Failed b))
+
+  -- | Blocks until force completes or timeout is reached
+  forceUntil :: Int -> m a -> IO (Either Failed a)
+  forceUntil n a = timeout n (force a) >>= \case 
+                     Just (Right a) -> return $ Right a
+                     _ -> return $ Left Fail
+
+  -- | Blocks until force on a or b completes or timeout is reached.
+  forceEitherUntil :: Int -> m a -> m b -> IO (Either (Either Failed a) (Either Failed b))
+  forceEitherUntil n a b = timeout n (forceEither a b) >>= \case 
+                     Just (Left ea) -> return $ Left ea
+                     Just (Right eb) -> return $ Right eb
+                     Nothing -> return $ Left (Left Fail)
+
+eitherToCanFail :: Either e a -> Either Failed a
+eitherToCanFail = either (const $ Left Fail) Right
+
+instance (CanFail Async) where
+  -- | Returns true if Async has completed (successfully or not)
+  ready a = poll a >>= \r -> return $ isJust r
+  -- | Returns true if Async has completed with an exception
+  failed a = poll a >>= \r -> return (isJust r && isLeft (fromJust r))
+
+  -- | Blocks until Async completes 
+  force a = waitCatch a >>= \case
+    Left exc -> return $ Left Fail
+    Right a'' -> return $ Right a''
+
+  -- | Blocks until Async completes 
+  forceEither a b = waitEitherCatch a b >>= \case
+      Left ea  -> return $ (Left  . eitherToCanFail) ea
+      Right eb -> return $ (Right . eitherToCanFail) eb
+  
+timeOut :: Int 
+timeOut = 10000000
+instance (CanFail (Either Failed)) where
+  ready a = return True
+  failed = return . isLeft
+  force = return
+  forceEither a b = do 
+    case a of
+      Left ea -> case b of 
+        Left eb -> return $ (Right (Left Fail)) -- ?? Left (Left Fail)
+        Right b' -> return $ Right (Right b') --(Right . eitherToCanFail) b
+      Right a' -> return $ Left (Right a') --(Right . eitherToCanFail) b
+
+sSelect :: forall l1 l2 m m' a. (CanFail m, Eq a) => m (l1!a) -> m (l2!a)
+  -> IO (Either Failed ((C (l1 ⊔ l2) ∧ I(l1 ∨ l2) ∧ A(l1 ∧ l2))!a))
+sSelect a b = do 
+  forceEitherUntil timeOut a b >>= \case
+      Right (Left Fail) -> return $ Left Fail
+      Left (Left Fail) -> return $ Left Fail
+      Left (Right (Seal a')) -> return $ Right (Seal a')
+      Right (Right (Seal b')) -> return $ Right (Seal b')
+
+sSelect' :: forall l1 l2 m m' a pc. (CanFail m, Eq a, pc ⊑ l1, pc ⊑ l2) => (SPrin pc)
+  -> Labeled IO pc (m (l1!a)) 
+  -> Labeled IO pc (m (l2!a))
+  -> Labeled IO pc (pc!(Either Failed ((C (l1 ⊔ l2) ∧ I(l1 ∨ l2) ∧ A(l1 ∧ l2))!a)))
+sSelect' pc a' b' = do
+  a <- a'
+  b <- b'  
+  restrict pc (\_ ->
+    (liftIO $ forceEitherUntil timeOut a b) >>= \case
+        Right (Left Fail) -> return $ Left Fail
+        Left (Left Fail) -> return $ Left Fail
+        Left (Right (Seal a')) -> return $ Right (Seal a')
+        Right (Right (Seal b')) -> return $ Right (Seal b')
+        )
+
+sSelect'' :: forall l1 l2 m m' a pc. (CanFail m, Eq a, pc ⊑ l1, pc ⊑ l2) => 
+   IO (m (l1!a)) 
+  -> IO (m (l2!a))
+  -> IO ((Either Failed ((C (l1 ⊔ l2) ∧ I(l1 ∨ l2) ∧ A(l1 ∧ l2))!a)))
+sSelect'' a' b' = do
+  a <- a'
+  b <- b'  
+  forceEitherUntil timeOut a b >>= \case
+        Right (Left Fail) -> return $ Left Fail
+        Left (Left Fail) -> return $ Left Fail
+        Left (Right (Seal a')) -> return $ Right (Seal a')
+        Right (Right (Seal b')) -> return $ Right (Seal b')
+
+
+sCompare :: forall l1 l2 m m' a. (CanFail m, Eq a) => m (l1!a) -> m (l2!a)
+  -> IO (Either Failed ((C (l1 ⊔ l2) ∧ I(l1 ∧ l2) ∧ A(l1 ∨ l2))!a))
+sCompare a b = 
+  forceEitherUntil timeOut a b >>= \case
+    Left (Left Fail) -> return (Left Fail)
+    Left (Right (Seal a')) -> 
+      forceUntil timeOut b >>= \case 
+        Left Fail -> return $ Left Fail
+        Right (Seal b') -> return $ if a' == b' then Right (Seal a') else Left Fail
+
+    Right (Left Fail) -> return (Left Fail)
+    Right (Right (Seal b')) -> 
+      forceUntil timeOut a >>= \case 
+        Left Fail -> return $ Left Fail
+        Right (Seal a') -> return $ if a' == b' then Right (Seal b') else Left Fail
+
+sCompare' :: forall l1 l2 m m' a pc. (CanFail m, Eq a, pc ⊑ l1, pc ⊑ l2) => (SPrin pc)
+  -> Labeled IO pc (m (l1!a)) 
+  -> Labeled IO pc (m (l2!a))
+  -> Labeled IO pc (pc!(Either Failed ((C (l1 ⊔ l2) ∧ I(l1 ∧ l2) ∧ A(l1 ∨ l2))!a)))
+sCompare' pc a' b' = do
+  a <- a'
+  b <- b'
+  restrict pc (\_ -> 
+      (liftIO $ forceEitherUntil timeOut a b) >>= \case
+        Left (Left Fail) -> return (Left Fail)
+        Left (Right (Seal a')) -> 
+           (liftIO $ forceUntil timeOut b) >>= \case 
+            Left Fail -> return $ Left Fail
+            Right (Seal b') -> return $ if a' == b' then Right (Seal a') else Left Fail
+
+        Right (Left Fail) -> return (Left Fail)
+        Right (Right (Seal b')) -> 
+           (liftIO $ forceUntil timeOut a) >>= \case 
+            Left Fail -> return $ Left Fail
+            Right (Seal a') -> return $ if a' == b' then Right (Seal b') else Left Fail
+    )
 
 def :: Int
 def = 0
@@ -77,15 +373,6 @@ cOMMIT :: String
 cOMMIT = "COMMIT"
 
 type State = String
--- data State = INIT | PREPREPARE | PREPARE | COMMIT
-
-{--nextState :: State -> State
-nextState iNIT = pREPREPARE
-nextState pREPREPARE = pREPARE
-nextState pREPARE = cOMMIT
-nextState cOMMIT = iNIT
-nextState _ = iNIT
---}
 
 nextState :: State -> State
 nextState "INIT" = "PREPREPARE"
@@ -100,45 +387,80 @@ locOut as = wrap (helperOut as)
 helperOut :: forall a (loc ::LocTy). (KnownSymbol loc) => [a @ loc] -> [a]
 helperOut (a:as) = map unwrap as --a : helperOut as  
 
-
 newioref :: IO (IORef State )
 newioref = newIORef ("INIT" :: State)
 
-pbft :: Choreo IO () --forall (a:: LocTy). (KnownSymbol a) => Seq.StateT (SystemState a) IO NodeState --Choreo IO ()
+pbft :: Labeled (Choreo IO) ABC () --ABC ((ABC ! ())  @ "client") --forall (a:: LocTy). (KnownSymbol a) => Seq.StateT (SystemState a) IO NodeState --Choreo IO ()
 pbft = do 
-  locAState <- locA `locally` \_ -> newIORef ("INIT" :: State)
-  locBState <- locB `locally` \_ -> newIORef ("INIT" :: State)
-  locCState <- locC `locally` \_ -> newIORef ("INIT" :: State)
-  locLState <- leader `locally` \_ -> newIORef ("INIT" :: State)
-
-  request <- client `locally` \_ -> do
-      putStrLn "Client$ Input:"
-      readLn :: IO Int
+  locAState <- (abc, locA, abc, fromA) `sLocally` \_ -> safeNewIORef ("INIT" :: State)
+  locBState <- (abc, locB, abc, fromB) `sLocally` \_ -> safeNewIORef ("INIT" :: State)
+  locCState <- (abc, locC, abc, fromC) `sLocally` \_ -> safeNewIORef ("INIT" :: State)
+  locLState <- (abc, leader, abc, fromLeader) `sLocally` \_ -> safeNewIORef ("INIT" :: State)
+ 
+  request <- (abc, client, abc, fromClient) `sLocally` \_ -> do
+      safePutStrLn @ABC $ label "Client$ Input:"
+      relabel' abc clientGetLine
   
-  req <- (client, request) ~> leader
+  reqrq <- (abc, leader, abc, fromLeader) `sLocally` \_ -> do
+      safePutStrLn @ABC $ label "Leader$ Input:"
+      relabel' abc leaderGetLine
+
+  req <- (sym client, abc, fromClient, request) ~>: sym leader 
+
+  --preprepare 
+  bb <- preprepare (req, locLState, locAState)
+  request <- (abc, leader, abc, fromLeader) `sLocally` \_ -> do
+      safePutStrLn @ABC $ label "Leader$ Input:"
+      relabel' abc leaderGetLine
+  --bb <- preprepare (req, leader, locLState, locA, locAState, locB, locBState, locC, locCState)
+  --(prepa, prepb, prepc)
+  return ()
+  
+
+  {-  
+
   (prepa, prepb, prepc) <- preprepare (req, leader, locLState, locA, locAState, locB, locBState, locC, locCState)
   (ml, ma, mb, mc) <- prepare (leader, locLState, req) (locA, locAState, prepa) (locB, locBState, prepb) (locC, locCState, prepc) 
   (repl, repa, repb, repc) <- commit (leader, locLState, ml) (locA, locAState, ma) (locB, locBState, mb) (locC, locCState, mc)
   reply(leader, locLState, repl) (locA, locAState, repa) (locB, locBState, repb) (locC, locCState, repc)
 
   return () 
-
-preprepare :: forall (a:: LocTy) (b:: LocTy) (c :: LocTy) (l :: LocTy) m. 
- (KnownSymbol a, KnownSymbol b, KnownSymbol c, KnownSymbol l) => 
-                     (Async Int @ l, Proxy l, IORef State @ l, Proxy a, IORef State @ a,
-                      Proxy b, IORef State @ b, Proxy c, IORef State @ c) 
-                  -> Choreo IO (Async Int @ a, Async Int @ b, Async Int @ c)
+-}
+preprepare :: (Async (ABC ! (ABC ! Int)) @ "Leader", (ABC ! IORef State) @ "Leader", (ABC ! IORef State) @ "A")
+                  -> Labeled (Choreo IO) ABC (ABC!())--([Async (ABC ! Int) @ a, Async(ABC ! Int) @ b, Async (ABC ! Int) @ c]))
+preprepare (req, statel, statea) =  do
+                           (abc, leader, abc, fromLeader) `sLocally` \un -> do  
+                             safePutStrLn $ label "prepare leader:"
+                           req' <- (abc, leader, abc, fromLeader) `sLocally` \un -> do  
+                             safePutStrLn @ABC $ label $ "prepare leader:"
+                             x <- (return $ un req)  
+                             x' <- (join <$> restrict abc (\_-> liftIO $ wait x)) --(return $ wait x) (\y -> y)  -- Async a -> IO a
+                             safePutStrLn @ABC $ label $ "prepare leader:" ++ show x'
+                             safeModifyIORef (un statel) nextState 
+                             return x'
+                          --  prepa <-  (sym leader, abc, fromLeader, req') ~>: sym locA
+                          --  prepb <-  (sym leader, abc, fromLeader, req') ~>: sym locB  
+                          --  prepc <-  (sym leader, abc, fromLeader, req') ~>: sym locC
+                           return $ label () --[prepa, prepb, prepc]
+                           
+{-
+preprepare :: forall a b c l m. 
+-- (KnownSymbol a, KnownSymbol b, KnownSymbol c, KnownSymbol l) => 
+                     (Async (ABC ! (ABC ! Int)) @ l, Proxy l, (ABC ! IORef State) @ l, SPrin a, (ABC ! IORef State) @ a,
+                      Proxy b, (ABC ! IORef State) @ b, Proxy c, (ABC ! IORef State) @ c) 
+                  -> Labeled (Choreo IO) ABC (ABC!())--([Async (ABC ! Int) @ a, Async(ABC ! Int) @ b, Async (ABC ! Int) @ c]))
 preprepare (req, locl, statel, loca, statea, locb, stateb, locc, statec) =  do
-                           req' <- locl `locally` \un -> do  
-                            x <- wait (un req)  
-                            putStrLn $ "prepare leader:" ++ show x
+                           req' <- (abc, leader, abc, fromLeader) `sLocally` \un -> do  
+                            x <- joinLoc $ wait (un req)  
+                            safePutStrLn abc $ "prepare leader:" ++ show x
                             modifyIORef (un statel) nextState 
                             return x
-                           prepa <-  (locl,req') ~> loca
-                           prepb <-  (locl, req') ~> locb  
-                           prepc <-  (locl, req') ~> locc
-                           return (prepa, prepb, prepc)
-
+                           prepa <-  (sym locl, abc, fromLeader, req') ~>: sym loca
+                           prepb <-  (sym locl, abc, fromLeader, req') ~>: sym locb  
+                           prepc <-  (sym locl, abc, fromLeader, req') ~>: sym locc
+                           return () --[prepa, prepb, prepc]
+                           -}
+{-
 prepare :: forall (l :: LocTy) (a:: LocTy) (b:: LocTy) (c :: LocTy) m. (KnownSymbol l, KnownSymbol a, KnownSymbol b, KnownSymbol c) => 
          (Proxy l, IORef State @ l, Async Int @ l)  
       ->  (Proxy a, IORef State @ a, Async Int @ a) 
@@ -295,11 +617,12 @@ reply (locl, statel, repl) (loca, statea, repa) (locb, stateb, repb) (locc, stat
         putStrLn $ "result at client:" ++ show finalans
     return ()
     
+-}
 
 pBFTMain :: HttpConfig -> IO ()
 pBFTMain cfg = do
   [loc] <- getArgs
-  void $ runChoreography cfg pbft loc  >> pBFTMain cfg
+  runChoreography cfg (runLabeled pbft) loc  >> pBFTMain cfg
  
 main = do 
   pBFTMain cfg 

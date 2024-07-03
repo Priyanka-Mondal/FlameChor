@@ -294,7 +294,7 @@ largest pc a' b' = do
         Right (Right (Seal b')) -> 
            (liftIO $ forceUntil timeOut a) >>= \case 
             Left Fail -> return $ Left Fail
-            Right (Seal a') -> return $ if a' > b' then Right (Seal b') else Right (Seal b')
+            Right (Seal a') -> return $ if a' > b' then Right (Seal a') else Right (Seal b')
     )
 
 
