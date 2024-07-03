@@ -409,14 +409,15 @@ pbft = do
 
   --preprepare 
   (ppa, ppb, ppc) <- preprepare (req, locLState)
-  bb <- prepare (ppa, ppb, ppc, locLState, locAState, locBState, locCState)
-  --(prepa, prepb, prepc)
+  (pl, pa, pb, pc) <- prepare (ppa, ppb, ppc, locLState, locAState, locBState, locCState)
+  --commit ((locLState, pl), (locAState, pa), (locBState, pb), (locCState, pc))
+ 
+ 
   return ()
   
 
   {-  
 
-  (ml, ma, mb, mc) <- prepare (leader, locLState, req) (locA, locAState, prepa) (locB, locBState, prepb) (locC, locCState, prepc) 
   (repl, repa, repb, repc) <- commit (leader, locLState, ml) (locA, locAState, ma) (locB, locBState, mb) (locC, locCState, mc)
   reply(leader, locLState, repl) (locA, locAState, repa) (locB, locBState, repb) (locC, locCState, repc)
 
@@ -439,83 +440,201 @@ preprepare (req, statel) =  do
                            prepc <-  (sym leader, abc, fromLeader, req') ~>: sym locC
                            return $ (prepa, prepb, prepc)
 
-prepare ::  Async (ABC ! (ABC ! Int)) @ "A" -> Async (ABC ! (ABC ! Int)) @ "B" ->
-            Async (ABC ! (ABC ! Int)) @ "C" -> (ABC ! IORef State) @ "leader" ->
-              (ABC ! IORef State) @ "A" -> (ABC ! IORef State) @ "B" ->
-                (ABC ! IORef State) @ "C"
-prepare ppa ppb ppc statel statea stateb statec =  do
-                    reqa <-  loca `locally` \un -> do 
-                              x <-  wait (un msga) 
-                              modifyIORef (un statea) nextState 
-                              putStrLn $ "prepare A:" ++ show x
-                              return x 
-                    al <- (loca, reqa) ~> locl
-                    ab <- (loca, reqa) ~> locb
-                    ac <- (loca, reqa) ~> locc
-    
-                    reqb <- locb `locally` \un -> do 
-                              x <- wait (un msgb) 
-                              modifyIORef (un stateb) nextState 
-                              putStrLn $ "prepare B:" ++ show x
-                              return x 
-                    bl <- (locb, reqb) ~> locl
-                    ba <- (locb, reqb) ~> loca
-                    bc <- (locb, reqb) ~> locc
+prepare ::  ((Async (ABC ! (ABC ! Int)) @ "A", Async (ABC ! (ABC ! Int)) @ "B",
+            Async (ABC ! (ABC ! Int)) @ "C", (ABC ! IORef State) @ "leader",
+              (ABC ! IORef State) @ "A", (ABC ! IORef State) @ "B",
+              (ABC ! IORef State) @ "C")) -> 
+              Labeled (Choreo IO) ABC ((ABC ! [Async (ABC ! (ABC ! Int))]) @ "leader", 
+              (ABC ! [Async (ABC ! (ABC ! Int))]) @ "A", (ABC ! [Async (ABC ! (ABC ! Int))]) @ "B", 
+              (ABC ! [Async (ABC ! (ABC ! Int))]) @ "C")
+prepare (ppa, ppb, ppc, statel, statea, stateb, statec) =  do
+        reqa <- (abc, locA, abc, fromA) `sLocally` \un -> do  
+                  x <- return $ un ppa
+                  let z' = join @_ @_ @ABC <$> wait x
+                  x' <- (join @_ @_ @ABC <$> restrict abc (\_-> z'))
+                  safePutStrLn @ABC $ label $ "prepare A:" ++ show x'
+                  safeModifyIORef (un statea) nextState
+                  return x'
+        al <- (sym locA, abc, fromA, reqa) ~>: sym leader
+        ab <- (sym locA, abc, fromA, reqa) ~>: sym locB
+        ac <- (sym locA, abc, fromA, reqa) ~>: sym locC
+
+        reqb <- (abc, locB, abc, fromB) `sLocally` \un -> do  
+                  x <- return $ un ppb
+                  let z' = join @_ @_ @ABC <$> wait x
+                  x' <- (join @_ @_ @ABC <$> restrict abc (\_-> z'))
+                  safePutStrLn @ABC $ label $ "prepare B:" ++ show x'
+                  safeModifyIORef (un stateb) nextState
+                  return x'
+        bl <- (sym locB, abc, fromB, reqb) ~>: sym leader
+        ba <- (sym locB, abc, fromB, reqb) ~>: sym locA
+        bc <- (sym locB, abc, fromB, reqb) ~>: sym locC
+      
+        reqc <- (abc, locC, abc, fromC) `sLocally` \un -> do  
+                  x <- return $ un ppc
+                  let z' = join @_ @_ @ABC <$> wait x
+                  x' <- (join @_ @_ @ABC <$> restrict abc (\_-> z'))
+                  safePutStrLn @ABC $ label $ "prepare C:" ++ show x'
+                  safeModifyIORef (un statec) nextState
+                  return x'
+        cl <- (sym locC, abc, fromC, reqc) ~>: sym leader
+        ca <- (sym locC, abc, fromC, reqc) ~>: sym locA
+        cb <- (sym locC, abc, fromC, reqc) ~>: sym locB
+---------------------------------COMMIT------------------------------------------------------------------
+-- al bl and cl 
+
+        repl <-  (abc, leader, abc, fromLeader) `sLocally` \un -> do 
+            ab <- (sCompare' abc (return (un al)) (return (un bl))) 
+            bc <- (sCompare' abc (return (un bl)) (return (un cl)))
+            ca <- (sCompare' abc (return (un cl)) (return (un al)))
+            abbc <- use ab (\ab' -> (use bc (\bc' -> sSelect' abc (return ab') (return bc'))))
+            use @_ @ABC @ABC abbc (\abbc' -> use ca (\ca'-> sSelect' abc (return abbc') (return ca')))   
+            y <- safeReadIORef $ un statel
+            if y == Seal "PREPREPARE" then 
+              do
+                safeModifyIORef (un statel) nextState 
+                safePutStrLn $ label "commit leader:"  -- ++ un statel
+                return abbc 
+              else 
+              do 
+                init <- safeNewIORef ("INIT" :: State)
+                safeModifyIORef init nextState 
+                return $ label $ Left Fail
+
+        repa <-  (abc, locA, abc, fromA) `sLocally` \un -> do 
+            ab <- (sCompare' abc (return (un ppa)) (return (un ba))) 
+            bc <- (sCompare' abc (return (un ba)) (return (un ca)))
+            ca <- (sCompare' abc (return (un ca)) (return (un ppa)))
+            abbc <- use ab (\ab' -> (use bc (\bc' -> sSelect' abc (return ab') (return bc'))))
+            use @_ @ABC @ABC abbc (\abbc' -> use ca (\ca'-> sSelect' abc (return abbc') (return ca')))   
+            y <- safeReadIORef $ un statea
+            if y == Seal "PREPREPARE" then 
+              do
+                safeModifyIORef (un statea) nextState 
+                safePutStrLn $ label "commit A:"  -- ++ un statel
+                return abbc 
+              else 
+              do 
+                init <- safeNewIORef ("INIT" :: State)
+                safeModifyIORef init nextState 
+                return $ label $ Left Fail
+
+        repb <-  (abc, locB, abc, fromB) `sLocally` \un -> do 
+            ab' <- (sCompare' abc (return (un ppb)) (return (un ab))) 
+            bc <- (sCompare' abc (return (un ab)) (return (un cb)))
+            ca <- (sCompare' abc (return (un cb)) (return (un ppb)))
+            abbc <- use ab' (\ab' -> (use bc (\bc' -> sSelect' abc (return ab') (return bc'))))
+            use @_ @ABC @ABC abbc (\abbc' -> use ca (\ca'-> sSelect' abc (return abbc') (return ca')))   
+            y <- safeReadIORef $ un stateb
+            if y == Seal "PREPREPARE" then 
+              do
+                safeModifyIORef (un stateb) nextState 
+                safePutStrLn $ label "commit B:"  -- ++ un statel
+                return abbc 
+              else 
+              do 
+                init <- safeNewIORef ("INIT" :: State)
+                safeModifyIORef init nextState 
+                return $ label $ Left Fail
+
+        repc <-  (abc, locC, abc, fromC) `sLocally` \un -> do 
+            ab' <- (sCompare' abc (return (un ppc)) (return (un ac))) 
+            bc' <- (sCompare' abc (return (un ac)) (return (un bc)))
+            ca <- (sCompare' abc (return (un bc)) (return (un ppc)))
+            abbc <- use ab' (\ab' -> (use bc' (\bc' -> sSelect' abc (return ab') (return bc'))))
+            use @_ @ABC @ABC abbc (\abbc' -> use ca (\ca'-> sSelect' abc (return abbc') (return ca')))   
+            y <- safeReadIORef $ un statec
+            if y == Seal "PREPREPARE" then 
+              do
+                safeModifyIORef (un statec) nextState 
+                safePutStrLn $ label "commit C:"  -- ++ un statel
+                return abbc 
+              else 
+              do 
+                init <- safeNewIORef ("INIT" :: State)
+                safeModifyIORef init nextState 
+                return $ label $ Left Fail
+
+
+        retl <- (abc, leader, abc, fromLeader) `sLocally` \un -> return $ label [un al, un bl, un cl]
+        reta <- (abc, locA, abc, fromA) `sLocally` \un -> return $ label [un ba, un ca]
+        retb <- (abc, locB, abc, fromB) `sLocally` \un -> return $ label  [un ab, un cb]
+        retc <- (abc, locC, abc, fromC) `sLocally` \un -> return $ label [un ac, un bc]
+        return (retl, reta, retb, retc) 
                   
-                    reqc <- locc `locally` \un -> do 
-                              x <- wait (un msgc) 
-                              modifyIORef (un statec) nextState 
-                              putStrLn $ "prepare C:" ++ show x
-                              return x
-                    cl <- (locc, reqc) ~> locl
-                    ca <- (locc, reqc) ~> loca
-                    cb <- (locc, reqc) ~> locb 
-                    retl <- locl `locally` \un -> return [un req, un al, un bl, un cl]
-                    reta <- loca `locally` \un -> return [un msga, un ba, un ca]
-                    retb <- locb `locally` \un -> return [un msgb, un ab, un cb]
-                    retc <- locc `locally` \un -> return [un msgc, un ac, un bc]
-                    return (retl, reta, retb, retc) 
-                    
 {-
-prepare :: forall (l :: LocTy) (a:: LocTy) (b:: LocTy) (c :: LocTy) m. (KnownSymbol l, KnownSymbol a, KnownSymbol b, KnownSymbol c) => 
-         (Proxy l, IORef State @ l, Async Int @ l)  
-      ->  (Proxy a, IORef State @ a, Async Int @ a) 
-      ->  (Proxy b, IORef State @ b ,Async Int @ b) 
-      ->  (Proxy c, IORef State @ c, Async Int @ c)  
-      ->  Choreo IO ([Async Int] @ l, [Async Int] @ a, [Async Int] @ b, [Async Int] @ c)
-prepare (locl, statel, req) (loca, statea, msga) (locb, stateb, msgb) (locc, statec, msgc) =  do
-                    reqa <-  loca `locally` \un -> do 
-                              x <-  wait (un msga) 
-                              modifyIORef (un statea) nextState 
-                              putStrLn $ "prepare A:" ++ show x
-                              return x 
-                    al <- (loca, reqa) ~> locl
-                    ab <- (loca, reqa) ~> locb
-                    ac <- (loca, reqa) ~> locc
+commit :: forall (l::LocTy) (a :: LocTy) (b :: LocTy) (c :: LocTy). 
+          (KnownSymbol l, KnownSymbol a, KnownSymbol b, KnownSymbol c) => 
+             (Proxy l, IORef State @ l, [Async Int] @ l) 
+          -> (Proxy a, IORef State @ a, [Async Int] @ a) 
+          -> (Proxy b, IORef State @ b, [Async Int] @ b) 
+          -> (Proxy c, IORef State @ c, [Async Int] @ c) 
+          -> Choreo IO (Async Int @ l, Async Int @ a, Async Int @ b, Async Int @ c)
+commit  (locl, statel, ls) (loca, statea, as) (locb, stateb, bs) (locc, statec, cs) =  do 
+    --let outl = locOut ls  
+    repl <- locl `locally` \un -> do 
+                              x <-  selecT $ compare_ (un ls) 2
+                              y <- readIORef $ un statel
+                              if y == "PREPREPARE" then 
+                                do
+                                  modifyIORef (un statel) nextState 
+                                  putStrLn "commit leader:"  -- ++ un statel
+                                  return x 
+                               else 
+                                do 
+                                  init <- newioref
+                                  modifyIORef init nextState 
+                                  async $ return failVal
     
-                    reqb <- locb `locally` \un -> do 
-                              x <- wait (un msgb) 
-                              modifyIORef (un stateb) nextState 
-                              putStrLn $ "prepare B:" ++ show x
-                              return x 
-                    bl <- (locb, reqb) ~> locl
-                    ba <- (locb, reqb) ~> loca
-                    bc <- (locb, reqb) ~> locc
-                  
-                    reqc <- locc `locally` \un -> do 
-                              x <- wait (un msgc) 
-                              modifyIORef (un statec) nextState 
-                              putStrLn $ "prepare C:" ++ show x
-                              return x
-                    cl <- (locc, reqc) ~> locl
-                    ca <- (locc, reqc) ~> loca
-                    cb <- (locc, reqc) ~> locb 
-                    retl <- locl `locally` \un -> return [un req, un al, un bl, un cl]
-                    reta <- loca `locally` \un -> return [un msga, un ba, un ca]
-                    retb <- locb `locally` \un -> return [un msgb, un ab, un cb]
-                    retc <- locc `locally` \un -> return [un msgc, un ac, un bc]
-                    return (retl, reta, retb, retc) 
-  -}              
+    --let outa = locOut as  
+    repa <- loca `locally` \un -> do 
+                              x <- selecT $ compare_ (un as) 2
+                              y <- readIORef $ un statea
+                              if y == "PREPREPARE" then 
+                                do
+                                  modifyIORef (un statea) nextState 
+                                  putStrLn "commit A:" -- ++ un statel
+                                  return x 
+                               else 
+                                do 
+                                  print y
+                                  init <- newioref
+                                  modifyIORef init nextState 
+                                  async $ return failVal
+    
+    --let outb = locOut bs  
+    repb <- locb `locally` \un -> do 
+                              x <-   selecT $ compare_ (un bs) 2 
+                              y <- readIORef $ un stateb
+                              if y == "PREPREPARE" then 
+                                do
+                                  modifyIORef (un stateb) nextState 
+                                  putStrLn "commit B:" -- ++ un statel
+                                  return x 
+                               else 
+                                do 
+                                  init <- newioref
+                                  modifyIORef init nextState 
+                                  async $ return failVal
+  
+    --let outc = locOut cs  
+    repc <- locc `locally` \un -> do 
+                              x <-  selecT $ compare_ (un cs) 2
+                              y <- readIORef $ un statec
+                              if y == "PREPREPARE" then 
+                                do
+                                  modifyIORef (un statec) nextState 
+                                  putStrLn "commit C:" -- ++ un statel
+                                  return x 
+                               else 
+                                do 
+                                  init <- newioref
+                                  modifyIORef init nextState 
+                                  async $ return failVal
+
+    return (repl, repa, repb, repc)
+
+-}
 {-                
 commit :: forall (l::LocTy) (a :: LocTy) (b :: LocTy) (c :: LocTy). 
           (KnownSymbol l, KnownSymbol a, KnownSymbol b, KnownSymbol c) => 
