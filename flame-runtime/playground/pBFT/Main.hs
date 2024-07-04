@@ -332,7 +332,7 @@ sCompare a b =
         Left Fail -> return $ Left Fail
         Right (Seal a') -> return $ if a' == b' then Right (Seal b') else Left Fail
 
-sCompare' :: forall l1 l2 m m' a pc. (CanFail m, Eq a, pc ⊑ l1, pc ⊑ l2) => (SPrin pc)
+sCompare' :: forall l1 l2 m a pc. (CanFail m, Eq a, pc ⊑ l1, pc ⊑ l2) => (SPrin pc)
   -> Labeled IO pc (m (l1!a)) 
   -> Labeled IO pc (m (l2!a))
   -> Labeled IO pc (pc!(Either Failed ((C (l1 ⊔ l2) ∧ I(l1 ∧ l2) ∧ A(l1 ∨ l2))!a)))
