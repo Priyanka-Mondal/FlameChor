@@ -394,7 +394,7 @@ helperOut (a:as) = map unwrap as --a : helperOut as
 newioref :: IO (IORef State )
 newioref = newIORef ("INIT" :: State)
 
-pbft :: Labeled (Choreo IO) ABC () --ABC ((ABC ! ())  @ "client") --forall (a:: LocTy). (KnownSymbol a) => Seq.StateT (SystemState a) IO NodeState --Choreo IO ()
+pbft :: Labeled (Choreo IO) ABC () 
 pbft = do 
   locAState <- (abc, locA, abc, fromA) `sLocally` \_ -> safeNewIORef ("INIT" :: State)
   locBState <- (abc, locB, abc, fromB) `sLocally` \_ -> safeNewIORef ("INIT" :: State)
@@ -407,11 +407,8 @@ pbft = do
   
   req <- (sym client, abc, fromClient, request) ~>: sym leader 
 
-  --preprepare 
   (ppa, ppb, ppc) <- preprepare (req, locLState)
-  (pl, pa, pb, pc) <- prepare (ppa, ppb, ppc, locLState, locAState, locBState, locCState)
-  --commit ((locLState, pl), (locAState, pa), (locBState, pb), (locCState, pc))
- 
+  prepareCommit (ppa, ppb, ppc, locLState, locAState, locBState, locCState)
  
   return ()
   
@@ -440,14 +437,13 @@ preprepare (req, statel) =  do
                            prepc <-  (sym leader, abc, fromLeader, req') ~>: sym locC
                            return $ (prepa, prepb, prepc)
 
-prepare ::  ((Async (ABC ! (ABC ! Int)) @ "A", Async (ABC ! (ABC ! Int)) @ "B",
+prepareCommit ::  ((Async (ABC ! (ABC ! Int)) @ "A", Async (ABC ! (ABC ! Int)) @ "B",
             Async (ABC ! (ABC ! Int)) @ "C", (ABC ! IORef State) @ "leader",
               (ABC ! IORef State) @ "A", (ABC ! IORef State) @ "B",
               (ABC ! IORef State) @ "C")) -> 
-              Labeled (Choreo IO) ABC ((ABC ! [Async (ABC ! (ABC ! Int))]) @ "leader", 
-              (ABC ! [Async (ABC ! (ABC ! Int))]) @ "A", (ABC ! [Async (ABC ! (ABC ! Int))]) @ "B", 
-              (ABC ! [Async (ABC ! (ABC ! Int))]) @ "C")
-prepare (ppa, ppb, ppc, statel, statea, stateb, statec) =  do
+              Labeled (Choreo IO) ABC ()
+prepareCommit (ppa, ppb, ppc, statel, statea, stateb, statec) =  do
+--------------------------------------PREPARE-----------------------------------------------------
         reqa <- (abc, locA, abc, fromA) `sLocally` \un -> do  
                   x <- return $ un ppa
                   let z' = join @_ @_ @ABC <$> wait x
@@ -481,7 +477,6 @@ prepare (ppa, ppb, ppc, statel, statea, stateb, statec) =  do
         ca <- (sym locC, abc, fromC, reqc) ~>: sym locA
         cb <- (sym locC, abc, fromC, reqc) ~>: sym locB
 ---------------------------------COMMIT------------------------------------------------------------------
--- al bl and cl 
 
         repl <-  (abc, leader, abc, fromLeader) `sLocally` \un -> do 
             ab <- (sCompare' abc (return (un al)) (return (un bl))) 
@@ -542,7 +537,7 @@ prepare (ppa, ppb, ppc, statel, statea, stateb, statec) =  do
             bc' <- (sCompare' abc (return (un ac)) (return (un bc)))
             ca <- (sCompare' abc (return (un bc)) (return (un ppc)))
             abbc <- use ab' (\ab' -> (use bc' (\bc' -> sSelect' abc (return ab') (return bc'))))
-            use @_ @ABC @ABC abbc (\abbc' -> use ca (\ca'-> sSelect' abc (return abbc') (return ca')))   
+            use abbc (\abbc' -> use ca (\ca'-> sSelect' abc (return abbc') (return ca')))   
             y <- safeReadIORef $ un statec
             if y == Seal "PREPREPARE" then 
               do
@@ -555,13 +550,113 @@ prepare (ppa, ppb, ppc, statel, statea, stateb, statec) =  do
                 safeModifyIORef init nextState 
                 return $ label $ Left Fail
 
+--------------------------------------REPLY-------------------------------------------------------------------
 
-        retl <- (abc, leader, abc, fromLeader) `sLocally` \un -> return $ label [un al, un bl, un cl]
-        reta <- (abc, locA, abc, fromA) `sLocally` \un -> return $ label [un ba, un ca]
-        retb <- (abc, locB, abc, fromB) `sLocally` \un -> return $ label  [un ab, un cb]
-        retc <- (abc, locC, abc, fromC) `sLocally` \un -> return $ label [un ac, un bc]
-        return (retl, reta, retb, retc) 
-                  
+        repl' <- (abc, leader, abc, fromLeader) `sLocally` \un -> do 
+                              safeModifyIORef (un statel) nextState
+                              use (un repl) (\d-> do
+                                case d of  
+                                  Right e -> use (e) (\t -> use t (\t' -> do restrict abc (\_ -> return $ times3 t')))
+                                  Left _ -> return $ label (-1)--failVal
+                                   )
+
+        repa' <- (abc, locA, abc, fromA) `sLocally` \un -> do 
+                              safeModifyIORef (un statea) nextState
+                              use (un repa) (\d-> do
+                                case d of  
+                                  Right e -> use (e) (\t -> use t (\t' -> do restrict abc (\_ -> return $ times3 t')))
+                                  Left _ -> return $ label (-1)--failVal
+                                   )
+
+        repb' <- (abc, locB, abc, fromB) `sLocally` \un -> do 
+                              safeModifyIORef (un stateb) nextState
+                              use (un repb) (\d-> do
+                                case d of  
+                                  Right e -> use (e) (\t -> use t (\t' -> do restrict abc (\_ -> return $ times3 t')))
+                                  Left _ -> return $ label (-1)--failVal
+                                   )
+
+        repc' <- (abc, locC, abc, fromC) `sLocally` \un -> do 
+                              safeModifyIORef (un statec) nextState
+                              use (un repc) (\d-> do
+                                case d of  
+                                  Right e -> use (e) (\t -> use t (\t' -> do restrict abc (\_ -> return $ times3 t')))
+                                  Left _ -> return $ label (-1)--failVal
+                                   )
+ 
+        rl <-  (sym leader, abc, fromLeader, repl') ~>: sym client
+        ra <-  (sym locA, abc, fromA, repa') ~>: sym client
+        rb <-  (sym locB, abc, fromB, repb') ~>: sym client
+        rc <-  (sym locC, abc, fromC, repc') ~>: sym client
+
+        replies <- (abc, client, abc, fromClient) `sLocally` \un -> do 
+            one <- (sCompare' abc (return (un rl)) (return (un ra))) 
+            two <- (sCompare' abc (return (un ra)) (return (un rb)))
+            three <- (sCompare' abc (return (un rc)) (return (un rl)))
+            four <- (sCompare' abc (return (un ra)) (return (un rc)))
+            five <- (sCompare' abc (return (un rb)) (return (un rc)))
+            six <- (sCompare' abc (return (un rl)) (return (un rb)))
+            one' <- use one (\ab' -> (use two (\bc' -> sSelect' abc (return ab') (return bc'))))
+            two' <- use one' (\ab' -> (use three (\bc' -> sSelect' abc (return ab') (return bc'))))
+            three' <- use two' (\ab' -> (use four (\bc' -> sSelect' abc (return ab') (return bc'))))
+            four' <- use three' (\ab' -> (use five (\bc' -> sSelect' abc (return ab') (return bc'))))
+            five' <- use four' (\ab' -> (use five (\bc' -> sSelect' abc (return ab') (return bc'))))
+            use (five') (\d-> do
+                          case d of  
+                              Right e -> safePutStrLn $ label "consensus"
+                              Left _ -> safePutStrLn $ label "failed"
+                           )
+            
+        return ()
+
+
+
+ {-
+ reply :: forall (l::LocTy) (a :: LocTy) (b :: LocTy) (c :: LocTy). 
+          (KnownSymbol l, KnownSymbol a, KnownSymbol b, KnownSymbol c) => 
+          (Proxy l, IORef State @ l, Async Int @ l) 
+       -> (Proxy a, IORef State @ a, Async Int @ a) 
+       -> (Proxy b, IORef State @ b, Async Int @ b) 
+       -> (Proxy c, IORef State @ c, Async Int @ c)
+       -> Choreo IO ()
+reply (locl, statel, repl) (loca, statea, repa) (locb, stateb, repb) (locc, statec, repc) = do 
+    repl' <- locl `locally` \un -> do 
+                              x <- wait (un repl)
+                              modifyIORef (un statel) nextState
+                              putStrLn $ "reply leader:" ++ show (times3 x) -- ++ un statea
+                              if x /= failVal then return $ times3 x else return failVal 
+    rl <-  (locl, repl') ~> client
+
+    repa <- loca `locally` \un -> do 
+                              x <-  wait $ un repa
+                              modifyIORef (un statea) nextState
+                              putStrLn $ "reply A:" ++ show (times3 x) -- ++ un statea
+                              if x /= failVal then return $ times3 x else return failVal
+    ra <- (loca, repa) ~> client
+
+    repb <- locb `locally` \un -> do 
+                               x <- wait $ un repb
+                               modifyIORef (un stateb) nextState
+                               putStrLn $ "reply B:" ++ show (times3 x) 
+                               if x /= failVal then return $ times3 x else return failVal
+    rb <- (locb, repb) ~> client
+
+    repc <- locc `locally` \un -> do 
+                               x <- wait $ un repc
+                               modifyIORef (un statec) nextState
+                               putStrLn $ "reply C:" ++ show (times3 x) 
+                               if x /= failVal then return $ times3 x else return failVal 
+    rc <-  (locc, repc) ~> client
+
+    --let replies =  locOut [rl,ra,rb,rc] -- [x @ loc] --> [x] @ loc
+    replies <- client `locally` \un -> do 
+        let replies = [un rl, un ra, un rb, un rc]
+        answer <- selecT $ compare_ replies 3
+        finalans <- wait answer
+        putStrLn $ "result at client:" ++ show finalans
+    return ()
+    
+-}                 
 {-
 commit :: forall (l::LocTy) (a :: LocTy) (b :: LocTy) (c :: LocTy). 
           (KnownSymbol l, KnownSymbol a, KnownSymbol b, KnownSymbol c) => 
