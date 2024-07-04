@@ -407,11 +407,8 @@ pbft = do
   
   req <- (sym client, abc, fromClient, request) ~>: sym leader 
 
-  --preprepare 
   (ppa, ppb, ppc) <- preprepare (req, locLState)
   prepareCommit (ppa, ppb, ppc, locLState, locAState, locBState, locCState)
-  --commit ((locLState, pl), (locAState, pa), (locBState, pb), (locCState, pc))
- 
  
   return ()
   
