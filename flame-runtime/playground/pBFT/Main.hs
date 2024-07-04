@@ -394,7 +394,7 @@ helperOut (a:as) = map unwrap as --a : helperOut as
 newioref :: IO (IORef State )
 newioref = newIORef ("INIT" :: State)
 
-pbft :: Labeled (Choreo IO) ABC () --ABC ((ABC ! ())  @ "client") --forall (a:: LocTy). (KnownSymbol a) => Seq.StateT (SystemState a) IO NodeState --Choreo IO ()
+pbft :: Labeled (Choreo IO) ABC () 
 pbft = do 
   locAState <- (abc, locA, abc, fromA) `sLocally` \_ -> safeNewIORef ("INIT" :: State)
   locBState <- (abc, locB, abc, fromB) `sLocally` \_ -> safeNewIORef ("INIT" :: State)
@@ -442,10 +442,6 @@ prepareCommit ::  ((Async (ABC ! (ABC ! Int)) @ "A", Async (ABC ! (ABC ! Int)) @
               (ABC ! IORef State) @ "A", (ABC ! IORef State) @ "B",
               (ABC ! IORef State) @ "C")) -> 
               Labeled (Choreo IO) ABC ()
-            -- Labeled (Choreo IO) ABC (Async Int @ l, Async Int @ a, Async Int @ b, Async Int @ c)
-             -- Labeled (Choreo IO) ABC ((ABC ! [Async (ABC ! (ABC ! Int))]) @ "leader", 
-             -- (ABC ! [Async (ABC ! (ABC ! Int))]) @ "A", (ABC ! [Async (ABC ! (ABC ! Int))]) @ "B", 
-             -- (ABC ! [Async (ABC ! (ABC ! Int))]) @ "C")
 prepareCommit (ppa, ppb, ppc, statel, statea, stateb, statec) =  do
 --------------------------------------PREPARE-----------------------------------------------------
         reqa <- (abc, locA, abc, fromA) `sLocally` \un -> do  
@@ -587,16 +583,12 @@ prepareCommit (ppa, ppb, ppc, statel, statea, stateb, statec) =  do
                                   Right e -> use (e) (\t -> use t (\t' -> do restrict abc (\_ -> return $ times3 t')))
                                   Left _ -> return $ label (-1)--failVal
                                    )
-
-                             -- putStrLn $ "reply leader:" ++ show (times3 x) -- ++ un statea
-                             -- if x /= failVal then return $ times3 x else return failVal 
+ 
         rl <-  (sym leader, abc, fromLeader, repl') ~>: sym client
         ra <-  (sym locA, abc, fromA, repa') ~>: sym client
         rb <-  (sym locB, abc, fromB, repb') ~>: sym client
         rc <-  (sym locC, abc, fromC, repc') ~>: sym client
 
-        --let replies =  locOut [rl,ra,rb,rc] -- [x @ loc] --> [x] @ loc
-        -- ab bc cd ad bd ac 
         replies <- (abc, client, abc, fromClient) `sLocally` \un -> do 
             one <- (sCompare' abc (return (un rl)) (return (un ra))) 
             two <- (sCompare' abc (return (un ra)) (return (un rb)))
